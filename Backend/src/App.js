@@ -7,7 +7,9 @@ app.use(express.json());
 
 app.use(cors())
 
-ConnectionDB();
+ConnectionDB(); 
+
+app.use('', require('./User/User.route'))
 
 
 module.exports = app;
