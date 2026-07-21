@@ -9,7 +9,9 @@ app.use(cors())
 
 ConnectionDB(); 
 
-app.use('', require('./User/User.route'))
+app.use('/api', require('./User/User.route'))
+app.use('/api', require('./TourSchedules/Tourschedules.route'))
+app.use('/api', require('./TourPackages/TourPackages.route'))
 
 
 module.exports = app;

@@ -42,6 +42,6 @@ const TourschedulesSchema = new mongoose.Schema({
 {
     timestamps:true
 },)
-const Tourschedulesmodel = module.exports = mongoose.model('tourschedules', TourschedulesSchema);
+const Tourschedulesmodel = module.exports = mongoose.model('tourschedule', TourschedulesSchema);
 
-module.exports = Tourpackagesmodel    
+module.exports = Tourschedulesmodel    
