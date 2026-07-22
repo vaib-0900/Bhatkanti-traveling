@@ -51,6 +51,6 @@ const AddonsSchema = new mongoose.Schema({
 
 
 })
-const Addonmodel = module.exports = mongoose.model('addon', AddonSchema);
+const Addonsmodel = module.exports = mongoose.model('addons', AddonsSchema);
 
-module.exports = Addonmodel
+module.exports = Addonsmodel

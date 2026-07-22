@@ -18,6 +18,8 @@ app.use('/api', require('./Notifications/Notifications.route'))
 app.use('/api', require('./Customers/Customers.route'))
 app.use('/api', require('./BookingTravelers/Bookingtravelers.route'))
 app.use('/api', require('./Bookings/Bookings.route'))
+app.use('/api', require('./Booking-Addons/Bookingaddons.route'))
+app.use('/api', require('./Add-ons/Addons.route'))
 
 
 
