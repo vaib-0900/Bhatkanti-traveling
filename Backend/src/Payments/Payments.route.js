@@ -2,7 +2,7 @@ const express = require('express');
 const router = express();
 const controller = require('./Payments.controller')
 
-router.get("/payments/index",controller.index)
+router.get("/payments/list",controller.list)
 router.get("/payments/show/:id",controller.show)
 router.post("/payments/store",controller.store)
 router.put("/payments/update",controller.updated)

@@ -23,7 +23,6 @@ const CustomersSchema = new mongoose.Schema({
     },
     date_of_birth: {
          type: Date,
-        required: true,
          default:'Date.now',
     },
     nationality: {

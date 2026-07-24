@@ -11,7 +11,7 @@ const AddonsSchema = new mongoose.Schema({
         required: true,
     },
      price: {
-        type: String,
+        type: Number,
         required: true,
     },
      currency: {
@@ -25,31 +25,7 @@ const AddonsSchema = new mongoose.Schema({
      is_active: {
         type: Boolean,
         default: true,
-    },
-      booking_addon_id: {
-        type: Number,
-        required: true,
-    },
-      booking_id: {
-        type: Number,
-        required: true,
-    },
-      addon_id: {
-        type: Number,
-        required: true,
-    },
-     quantity: {
-        type: Number,
-        default: 1,
-        required: true,
-    },
-    price_at_time: {
-        type: Number,
-        required: true,
-    },
-
-
-
+    }
 })
 const Addonsmodel = module.exports = mongoose.model('addons', AddonsSchema);
 

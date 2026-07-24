@@ -13,11 +13,10 @@ const BookingtravelersSchema = new mongoose.Schema({
     last_name: {
         type: String,
         required: true,
-    },
+    },  
     date_of_birth: {
         type: Date,
-        required: true,
-        default: 'Date.now',
+        default:Date.now,
     },
     passport_number: {
         type: String,
@@ -25,13 +24,12 @@ const BookingtravelersSchema = new mongoose.Schema({
     },
     passport_expiry: {
         type: Date,
-        required: true,
-        default: 'Date.now',
+        default:Date.now,
     },
     gender: {
         type: String,
         enum: ["male", "female", "other"],
-        required: true,
+        default: "male",
     },
     nationality: {
         type: String,

@@ -8,13 +8,11 @@ const TourschedulesSchema = new mongoose.Schema({
     },
     departure_date: {
         type: Date,
-        required: true,
-         default:'Date.now',
+         default:Date.now,
     },
     return_date: {
         type: Date,
-        required: true,
-         default:'Date.now',
+         default:Date.now,
     },
     available_seats: {
         type: Number,

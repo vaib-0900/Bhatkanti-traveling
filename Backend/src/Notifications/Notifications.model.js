@@ -7,11 +7,7 @@ const NotificationsSchema = new mongoose.Schema({
         enum:["customer","admin","all"],
         required: true,
     },
-    recipient_id: {
-        type: Number,
-        required: true,
-    },
-     recipient_type: {
+     recipient_id_type: {
         type: String,
         enum:["booking_confirmation","payment_received","reminder","cancellation","promotion"],
         required: true,

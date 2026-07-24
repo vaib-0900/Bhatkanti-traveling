@@ -2,7 +2,7 @@ const express = require('express');
 const router = express();
 const controller = require('./Bookingaddons.controller')
 
-router.get("/bookingaddons/index",controller.index)
+router.get("/bookingaddons/list",controller.list)
 router.get("/bookingaddons/show/:id",controller.show)
 router.post("/bookingaddons/store",controller.store)
 router.put("/bookingaddons/update",controller.updated)
