@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Header from '../componant/Header'
 import Footer from '../componant/Footer'
+import AuthUser from "../Auth/AuthUser"
 
 const CATEGORIES = ['All', 'Trekking', 'Beach', 'Hill Station', 'Heritage', 'Adventure']
 
@@ -118,10 +119,27 @@ const PACKAGES = [
 const TourPackages = () => {
   const [activeCategory, setActiveCategory] = useState('All')
 
-  const filtered =
-    activeCategory === 'All'
-      ? PACKAGES
-      : PACKAGES.filter((p) => p.category === activeCategory)
+  // const filtered =
+  //   activeCategory === 'All'
+  //     ? PACKAGES
+  //     : PACKAGES.filter((p) => p.category === activeCategory)
+
+
+
+  const [Packages, setpackages] = useState([]);
+  const { http } = AuthUser();
+  const getpackages = async () => {
+    http.get("/tourpackages/list")
+      .then((res) => {
+        setpackages(res.data)
+      }).catch((err) => {
+        console.log(err);
+        console.log("Error in trainers");
+      })
+  }
+  useEffect(() => {
+    getpackages();
+  }, []);
 
   return (
     <>
@@ -167,18 +185,21 @@ const TourPackages = () => {
         <section className="bhk-tp-grid">
           <div className="container">
             <div className="row g-4">
-              {filtered.map((pkg) => (
-                <div className="col-md-6 col-lg-4" key={pkg.id}>
+              {Packages.length > 0 && Packages.map((data, key) => (
+                <div className="col-md-6 col-lg-4" key={data._id || key}>
                   <div className="bhk-pkg-card">
                     <div className="bhk-pkg-img-wrap">
-                      <img src={pkg.img} alt={pkg.name} />
-                      {pkg.tag && <span className="bhk-pkg-tag">{pkg.tag}</span>}
+                      <img
+                        src={`http://localhost:3000/media/${data.featured_image}`}
+                        alt={data.package_name}
+                      />
+                      {data.is_featured && <span className="bhk-pkg-tag">Featured</span>}
                       <span className="bhk-pkg-duration">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="12" r="9" />
                           <path d="M12 7v5l3 3" />
                         </svg>
-                        {pkg.duration}
+                        {data.duration_days}D / {data.duration_nights}N
                       </span>
                     </div>
                     <div className="bhk-pkg-body">
@@ -187,25 +208,37 @@ const TourPackages = () => {
                           <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
                           <circle cx="12" cy="10" r="3" />
                         </svg>
-                        {pkg.place}
+                        {data.destination}
                       </div>
-                      <h5 className="bhk-pkg-name">{pkg.name}</h5>
+                      <h5 className="bhk-pkg-name">{data.package_name}</h5>
+                         {data.description}
                       <div className="bhk-pkg-rating">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5a623" stroke="none">
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01z" />
                         </svg>
-                        <span>{pkg.rating}</span>
+                        <span>{data.rating || '4.5'}</span>
                         <span className="bhk-pkg-reviews">(120+ reviews)</span>
                       </div>
                       <div className="bhk-pkg-footer">
                         <div>
-                          <span className="bhk-pkg-old">₹{pkg.oldPrice.toLocaleString('en-IN')}</span>
-                          <span className="bhk-pkg-price">₹{pkg.price.toLocaleString('en-IN')}</span>
+                          {data.discount_price && data.discount_price !== 'test api' && !isNaN(Number(data.discount_price)) && (
+                            <span className="bhk-pkg-old">₹{Number(data.base_price).toLocaleString('en-IN')}</span>
+                          )}
+                          <span className="bhk-pkg-price">
+                            ₹{(
+                              data.discount_price && data.discount_price !== 'test api' && !isNaN(Number(data.discount_price))
+                                ? Number(data.discount_price)
+                                : Number(data.base_price)
+                            ).toLocaleString('en-IN')}
+                          </span>
                           <span className="bhk-pkg-per">/ person</span>
                         </div>
-                        <a href={`/tour-packages/${pkg.id}`} className="bhk-pkg-btn">
+                        <a href={`/tour-packages/${data.slug || data._id}`} className="bhk-pkg-btn">
                           View Details
                         </a>
+                      </div>
+                      <div className="bhk-pkg-group-size" style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                        Group: {data.min_group_size} - {data.max_group_size} people
                       </div>
                     </div>
                   </div>
@@ -213,20 +246,20 @@ const TourPackages = () => {
               ))}
             </div>
 
-            {filtered.length === 0 && (
+            {Packages.length === 0 && (
               <p className="text-center text-muted py-5">No packages found in this category.</p>
             )}
           </div>
         </section>
 
         {/* ===================== CTA ===================== */}
-        <section className="bhk-tp-cta">
+        {/* <section className="bhk-tp-cta">
           <div className="container text-center">
             <h2>Can't find what you're looking for?</h2>
             <p>Tell us your dream destination and we'll design a custom itinerary just for you.</p>
             <a href="/contact" className="bhk-cta-btn">Request Custom Package</a>
           </div>
-        </section>
+        </section> */}
 
       </main>
       <Footer />

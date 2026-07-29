@@ -13,6 +13,9 @@ const list = async (req, res) => {
 }
 const store = async (req, res) => {
      try {
+
+          return res.json(req.files)
+
           const {
                package_name,
                slug,
@@ -27,8 +30,7 @@ const store = async (req, res) => {
                inclusions,
                exclusions,
                itinerary,
-               gallery_images,
-               featured_image,
+             
                is_featured,
                is_active,
                status,
@@ -49,8 +51,8 @@ const store = async (req, res) => {
                inclusions,
                exclusions,
                itinerary,
-               gallery_images,
-               featured_image,
+               gallery_images:req.file.filename,
+               featured_image:req.file.filename,
                is_featured,
                is_active,
                status,

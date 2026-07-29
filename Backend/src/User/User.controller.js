@@ -13,13 +13,13 @@ const list = async (req,res) =>{
 }
 const store = async (req,res) =>{
      try {
+          return res.json(req.file)
           const{
                username,
                password_hash,
                email,
                full_name,
                role,
-               profile_image,
                last_login,
                is_active
           }= req.body;
@@ -30,7 +30,7 @@ const store = async (req,res) =>{
                email,
                full_name,
                role,
-               profile_image,
+               profile_image:req.file.filename,
                last_login,
                is_active
           })
@@ -44,7 +44,7 @@ const store = async (req,res) =>{
                {
                username,
                password_hash,
-               email,
+               email, 
                full_name,
                role,
                profile_image,
