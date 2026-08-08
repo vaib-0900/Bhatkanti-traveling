@@ -1,296 +1,286 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, User, Mail, Phone, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react'
+import AuthUser from '../Auth/AuthUser'
+import AddCustomersModal from './Customers/AddCustomersModel'
+import ViewCustomersModal from './Customers/ViewCustomersModel'
+import EditCustomersModal from './Customers/EditCustomersModal'
 
-function Customers() {
-  const [customers, setCustomers] = useState([
-    { id: 1, name: "Rahul Sharma", email: "rahul@gmail.com", phone: "9876543210" },
-    { id: 2, name: "Sneha Patil", email: "sneha@gmail.com", phone: "9123456780" },
-  ]);
-  
-  const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingCustomer, setEditingCustomer] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
 
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
 
-  // Open modal for adding new customer
-  const handleAddCustomer = () => {
-    setEditingCustomer(null);
-    setFormData({ name: '', email: '', phone: '' });
-    setShowModal(true);
-  };
 
-  // Open modal for editing customer
-  const handleEditCustomer = (customer) => {
-    setEditingCustomer(customer);
-    setFormData({
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone
-    });
-    setShowModal(true);
-  };
 
-  // Save customer (add or update)
-  const handleSaveCustomer = () => {
-    if (editingCustomer) {
-      // Update existing customer
-      setCustomers(customers.map(c => 
-        c.id === editingCustomer.id 
-          ? { ...c, ...formData }
-          : c
-      ));
-    } else {
-      // Add new customer
-      const newCustomer = {
-        id: customers.length > 0 ? Math.max(...customers.map(c => c.id)) + 1 : 1,
-        ...formData
-      };
-      setCustomers([...customers, newCustomer]);
+const Customers = () => {
+    const [Customers, setcustomers] = useState([])
+    const { http } = AuthUser()
+    const getcustomers = async () => {
+        await http.get("/customers/list")
+            .then((res) => {
+                setcustomers(res.data)
+            }).catch((err) => {
+                console.log(err)
+                console.log("Error in customers")
+            })
     }
-    setShowModal(false);
-    setFormData({ name: '', email: '', phone: '' });
-    setEditingCustomer(null);
-  };
+    useEffect(() => {
+        getcustomers()
+    }, [])
 
-  // Delete customer
-  const handleDeleteCustomer = (id) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      setCustomers(customers.filter(c => c.id !== id));
+    const [AddCustomers, setAddcustomers] = useState(false)
+    const Addmodel = () => {
+        setAddcustomers(true)
     }
-  };
 
-  // Filter customers based on search
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
-  );
+    const [ViewCustomers, setViewcustomers] = useState(false)
+    const [selectedcustomers, setSelectedcustomers] = useState(null)
+    const Viewmodel = (data) => {
+        setSelectedcustomers(data)
+        setViewcustomers(true)
+    }
 
-  return (
-    <div className="container-fluid px-4 py-3">
-      {/* Header Section */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="mb-1 fw-bold" style={{ color: '#1a2332' }}>
-            <User className="me-2" size={28} />
-            Customers
-          </h2>
-          <p className="text-muted mb-0">Manage your customer relationships</p>
-        </div>
-        <button 
-          className="btn btn-primary px-4 py-2 shadow-sm"
-          onClick={handleAddCustomer}
-          style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            border: 'none',
-            borderRadius: '10px'
-          }}
-        >
-          <Plus size={20} className="me-2" />
-          Add Customer
-        </button>
-      </div>
+    const [EditCustomers, setEditcustomers] = useState(false)
+    const [selectedEditCustomer, setSelectedEditCustomer] = useState(null)
+    const Editmodel = (data) => {
+        setSelectedEditCustomer(data)
+        setEditcustomers(true)
+    }
 
-      {/* Search Bar */}
-      <div className="mb-4">
-        <div className="input-group" style={{ maxWidth: '400px' }}>
-          <span className="input-group-text bg-white border-end-0">
-            <Search size={20} className="text-muted" />
-          </span>
-          <input
-            type="text"
-            className="form-control border-start-0"
-            placeholder="Search customers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ borderRadius: '0 10px 10px 0' }}
-          />
-        </div>
-      </div>
 
-      {/* Customers Table */}
-      <div className="card shadow-sm border-0" style={{ borderRadius: '15px', overflow: 'hidden' }}>
-        <div className="table-responsive">
-          <table className="table table-hover mb-0">
-            <thead style={{ background: '#f8f9fa' }}>
-              <tr>
-                <th className="py-3 px-4" style={{ fontWeight: '600', color: '#495057' }}>#</th>
-                <th className="py-3 px-4" style={{ fontWeight: '600', color: '#495057' }}>Customer Name</th>
-                <th className="py-3 px-4" style={{ fontWeight: '600', color: '#495057' }}>Email</th>
-                <th className="py-3 px-4" style={{ fontWeight: '600', color: '#495057' }}>Phone</th>
-                <th className="py-3 px-4 text-center" style={{ fontWeight: '600', color: '#495057' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCustomers.length > 0 ? (
-                filteredCustomers.map((c, index) => (
-                  <tr key={c.id} style={{ transition: 'all 0.2s' }}>
-                    <td className="py-3 px-4 fw-bold text-muted">{index + 1}</td>
-                    <td className="py-3 px-4">
-                      <div className="d-flex align-items-center">
-                        <div 
-                          className="rounded-circle me-2 d-flex align-items-center justify-content-center"
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            background: `linear-gradient(135deg, ${['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a'][index % 5]} 0%, ${['#764ba2', '#f5576c', '#00f2fe', '#38f9d7', '#fee140'][index % 5]} 100%)`,
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}
-                        >
-                          {c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                        </div>
-                        <span className="fw-semibold">{c.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Mail size={16} className="text-muted me-2" />
-                      {c.email}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Phone size={16} className="text-muted me-2" />
-                      {c.phone}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        className="btn btn-sm btn-outline-primary me-2"
-                        onClick={() => handleEditCustomer(c)}
-                        style={{ borderRadius: '8px', border: 'none', background: '#e7f5ff' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleDeleteCustomer(c.id)}
-                        style={{ borderRadius: '8px', border: 'none', background: '#fff5f5' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="text-center py-5 text-muted">
-                    No customers found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    return (
+        <>
+            {/* Breadcrumb */}
+            <div className="page-header">
+                <h3 className="fw-bold">Customers</h3>
+                <ul className="breadcrumbs">
 
-      {/* Customer Modal */}
-      {showModal && (
-        <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content" style={{ borderRadius: '20px', border: 'none' }}>
-              <div className="modal-header" style={{ borderBottom: 'none', padding: '1.5rem 1.5rem 0' }}>
-                <h5 className="modal-title fw-bold" style={{ color: '#1a2332' }}>
-                  {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-                </h5>
-                <button 
-                  type="button" 
-                  className="btn-close"
-                  onClick={() => setShowModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body" style={{ padding: '1.5rem' }}>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Full Name</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <User size={18} className="text-muted" />
-                    </span>
-                    <input
-                      type="text"
-                      className="form-control border-start-0"
-                      name="name"
-                      placeholder="Enter customer name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      style={{ borderRadius: '0 8px 8px 0' }}
-                    />
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Email Address</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <Mail size={18} className="text-muted" />
-                    </span>
-                    <input
-                      type="email"
-                      className="form-control border-start-0"
-                      name="email"
-                      placeholder="Enter email address"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      style={{ borderRadius: '0 8px 8px 0' }}
-                    />
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Phone Number</label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <Phone size={18} className="text-muted" />
-                    </span>
-                    <input
-                      type="tel"
-                      className="form-control border-start-0"
-                      name="phone"
-                      placeholder="Enter phone number"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      style={{ borderRadius: '0 8px 8px 0' }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ borderTop: 'none', padding: '0 1.5rem 1.5rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary px-4"
-                  onClick={() => setShowModal(false)}
-                  style={{ borderRadius: '10px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary px-4"
-                  onClick={handleSaveCustomer}
-                  style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    border: 'none',
-                    borderRadius: '10px'
-                  }}
-                >
-                  {editingCustomer ? 'Update' : 'Save'} Customer
-                </button>
-              </div>
+                </ul>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+
+            {/* Title */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+
+                <button className="btn btn-attractive" onClick={Addmodel}>
+                    <i className="fas fa-user-plus me-2"></i>
+                    Add Customers
+                </button>
+
+            </div>
+
+            {/* Table */}
+            <div className="card shadow-sm">
+
+                <div className="card-header bg-white">
+
+                    <div className="row g-3">
+
+                        <div className="col-md-4">
+                            <div className="input-group">
+                                <span className="input-group-text bg-white">
+                                    <i className="fa fa-search"></i>
+                                </span>
+
+                                <input
+                                    className="form-control"
+                                    placeholder="Search Customers..."
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div className="table-responsive">
+
+                    <table className="table table-hover align-middle mb-0">
+
+                        <thead className="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>email</th>
+                                <th>phone</th>
+                                <th>nationality</th>
+                                <th>passport_number</th>
+                                <th>preferred_language</th>
+                                <th>Newsletter</th>
+                                <th>Status</th>
+                                <th width="150">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {Customers.length > 0 && Customers.map((data, key) => (
+                                <tr key={key}>
+                                    <td>{data.first_name} {data.last_name}</td>
+                                    <td>{data.email}</td>
+                                    <td>{data.phone}</td>
+                                    <td className="text-capitalize">{data.nationality}</td>
+                                    <td>{data.passport_number}</td>
+                                    <td>{data.preferred_language}</td>
+                                    <td>
+                                        <span className={`badge ${data.newsletter_subscription ? 'bg-success' : 'bg-secondary'}`}>
+                                            {data.newsletter_subscription ? "Subscribed" : "Not Subscribed"}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span className={`badge ${data.is_active ? 'bg-success' : 'bg-danger'}`}>
+                                            {data.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>
+                                        {/* View Button */}
+                                        <button
+                                            className="btn btn-sm me-2"
+                                            onClick={() => Viewmodel(data)}
+                                            style={{
+                                                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                                border: 'none',
+                                                color: 'white',
+                                                padding: '6px 14px',
+                                                borderRadius: '20px',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: '0 4px 15px rgba(79, 172, 254, 0.3)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.target.style.transform = 'translateY(-2px)';
+                                                e.target.style.boxShadow = '0 6px 25px rgba(79, 172, 254, 0.5)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.transform = 'translateY(0)';
+                                                e.target.style.boxShadow = '0 4px 15px rgba(79, 172, 254, 0.3)';
+                                            }}
+                                        >
+                                            <i className="fa fa-eye me-1"></i> View
+                                        </button>
+
+                                        {/* Edit Button */}
+                                        <button
+                                            className="btn btn-sm me-2"
+                                            onClick={() => Editmodel(data)}
+                                            style={{
+                                                background: 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)',
+                                                border: 'none',
+                                                color: 'white',
+                                                padding: '6px 14px',
+                                                borderRadius: '20px',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: '0 4px 15px rgba(247, 151, 30, 0.3)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.target.style.transform = 'translateY(-2px)';
+                                                e.target.style.boxShadow = '0 6px 25px rgba(247, 151, 30, 0.5)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.transform = 'translateY(0)';
+                                                e.target.style.boxShadow = '0 4px 15px rgba(247, 151, 30, 0.3)';
+                                            }}
+                                        >
+                                            <i className="fa fa-edit me-1"></i> Edit
+                                        </button>
+
+                                        {/* Delete Button */}
+                                        <button
+                                            className="btn btn-sm"
+                                            onClick={() => {
+                                                if (window.confirm('Are you sure you want to delete this item?')) {
+                                                    console.log('Deleted:', data);
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                                border: 'none',
+                                                color: 'white',
+                                                padding: '6px 14px',
+                                                borderRadius: '20px',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: '0 4px 15px rgba(245, 87, 108, 0.3)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.target.style.transform = 'translateY(-2px)';
+                                                e.target.style.boxShadow = '0 6px 25px rgba(245, 87, 108, 0.5)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.transform = 'translateY(0)';
+                                                e.target.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.3)';
+                                            }}
+                                        >
+                                            <i className="fa fa-trash me-1"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {/* Add Customer Modal */}
+            <AddCustomersModal
+                show={AddCustomers}
+                onClose={() => setAddcustomers(false)}
+                oncustomersAdded={() => getcustomers()}
+            />
+
+            {/* View Customer Modal */}
+            <ViewCustomersModal
+                show={ViewCustomers}
+                onClose={() => setViewcustomers(false)}
+                customers={selectedcustomers}
+            />
+
+            {/* Edit Customer Modal */}
+            <EditCustomersModal
+                show={EditCustomers}
+                onClose={() => setEditcustomers(false)}
+                customer={selectedEditCustomer}
+                onCustomerUpdated={() => getcustomers()}
+            />
+
+
+            <style jsx>{`
+.btn-attractive {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 50px;
+  padding: 12px 30px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-export default Customers;
+.btn-attractive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  color: white;
+}
+
+.btn-attractive:active {
+  transform: scale(0.95);
+}
+
+/* Shine effect on hover */
+.btn-attractive::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255,255,255,0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg) translateX(-100%);
+  transition: all 0.6s ease;
+}
+
+.btn-attractive:hover::before {
+  transform: rotate(45deg) translateX(100%);
+}
+    `}</style>
+        </>
+    )
+}
+
+export default Customers

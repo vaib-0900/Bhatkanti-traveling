@@ -23,11 +23,48 @@ function Sidebar() {
               {({ isActive }) => isActive && <span className="nav-badge">12</span>}
             </NavLink>
           </li>
+
+            <li>
+            <NavLink to="/users" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
+              <span className="nav-text">Users</span>
+              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
+            </NavLink>
+          </li>
+
           <li>
             <NavLink to="/bookings" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
               <span className="nav-text">Bookings</span>
               {({ isActive }) => isActive && <span className="nav-badge">8</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/bookingtravelers" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
+              <span className="nav-text">Booking Travelers</span>
+              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/bookingaddons" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
+              <span className="nav-text">Booking Addons</span>
+              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/addons" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
+              <span className="nav-text">Addons</span>
+              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
+            </NavLink>
+          </li>
+            <li>
+            <NavLink to="/tourschedules" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-map"></i></span>
+              <span className="nav-text">Tourschedules</span>
+              {({ isActive }) => isActive && <span className="nav-badge">5</span>}
             </NavLink>
           </li>
           <li>
@@ -37,6 +74,14 @@ function Sidebar() {
               {({ isActive }) => isActive && <span className="nav-badge">5</span>}
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/reviews" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-star"></i></span>
+              <span className="nav-text">Reviews</span>
+              {({ isActive }) => isActive && <span className="nav-badge">5</span>}
+            </NavLink>
+          </li>
+          
           <li>
             <NavLink to="/customers" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               <span className="nav-icon"><i className="bi bi-people"></i></span>
@@ -49,6 +94,13 @@ function Sidebar() {
               <span className="nav-icon"><i className="bi bi-people"></i></span>
               <span className="nav-text">payments</span>
               {({ isActive }) => isActive && <span className="nav-badge">24</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/notifications" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              <span className="nav-icon"><i className="bi bi-bell"></i></span>
+              <span className="nav-text">Notifications</span>
+              {({ isActive }) => isActive && <span className="nav-badge">3</span>}
             </NavLink>
           </li>
         </ul>

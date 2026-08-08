@@ -1,46 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddBookingaddonsModal from './Bookingaddons/AddBookingaddonsModal'
+import ViewBookingaddonsModal from './Bookingaddons/ViewBookingaddonsModal'
+import EditBookingaddonsModal from './Bookingaddons/EditBookingaddonsModal'
 
 
 
 
 
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Bookingaddons = () => {
+    const [Bookingaddons, setbookingaddons] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const getbookingaddons = async () => {
+        await http.get("/bookingaddons/list")
             .then((res) => {
-                setpayments(res.data)
+                setbookingaddons(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in bookingaddons")
             })
     }
     useEffect(() => {
-        getpayments()
+        getbookingaddons()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddBookingaddons, setAddbookingaddons] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddbookingaddons(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewBookingaddons, setViewbookingaddons] = useState(false)
+    const [selectedbookingaddons, setSelectedbookingaddons] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectedbookingaddons(data)
+        setViewbookingaddons(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditBookingaddons, setEditbookingaddons] = useState(false)
+    const [selectedEditBookingaddon, setSelectedEditBookingaddon] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditBookingaddon(data)
+        setEditbookingaddons(true)
     }
 
 
@@ -48,7 +48,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Booking Addons</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +59,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Booking Addon
                 </button>
 
             </div>
@@ -79,7 +79,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Booking Addons..."
                                 />
                             </div>
                         </div>
@@ -93,31 +93,24 @@ const Payments = () => {
 
                         <thead className="table-light">
                             <tr>
+                                <th>booking_addon_id</th>
                                 <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
-                                <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>addon_id</th>
+                                <th>quantity</th>
+                                <th>price_at_time</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Bookingaddons.length > 0 && Bookingaddons.map((data, key) => (
                                 <tr key={key}>
+                                    <td>{data.booking_addon_id}</td>
                                     <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
-                                    <td>{data.currency}</td>
-                                    <td>
-                                        <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
-                                        </span>
-                                    </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
+                                    <td>{data.addon_id}</td>
+                                    <td>{data.quantity}</td>
+                                    <td>{data.price_at_time}</td>
+                                  
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +197,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Booking Addon Modal */}
+            <AddBookingaddonsModal
+                show={AddBookingaddons}
+                onClose={() => setAddbookingaddons(false)}
+                onbookingaddonsAdded={() => getbookingaddons()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Booking Addon Modal */}
+            <ViewBookingaddonsModal
+                show={ViewBookingaddons}
+                onClose={() => setViewbookingaddons(false)}
+                bookingaddons={selectedbookingaddons}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Booking Addon Modal */}
+            <EditBookingaddonsModal
+                show={EditBookingaddons}
+                onClose={() => setEditbookingaddons(false)}
+                bookingaddon={selectedEditBookingaddon}
+                onBookingaddonUpdated={() => getbookingaddons()}
             />
 
 
@@ -277,4 +270,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Bookingaddons

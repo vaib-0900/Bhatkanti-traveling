@@ -1,507 +1,330 @@
-function Dashboard() {
-  const stats = [
-    { title: "Total Bookings", value: "120", icon: "bi-journal-check", color: "primary", trend: "+12%", trendUp: true },
-    { title: "Total Tours", value: "15", icon: "bi-map", color: "success", trend: "+8%", trendUp: true },
-    { title: "Total Customers", value: "80", icon: "bi-people", color: "warning", trend: "+5%", trendUp: true },
-  ];
+import React, { useEffect, useState } from 'react'
+import AuthUser from '../Auth/AuthUser'
 
-  const recentBookings = [
-    { id: 1, customer: "Alice Johnson", tour: "Bali Paradise", date: "2026-07-15", status: "Confirmed", amount: "$1,240" },
-    { id: 2, customer: "Bob Smith", tour: "Tokyo Explorer", date: "2026-07-18", status: "Pending", amount: "$980" },
-    { id: 3, customer: "Carol White", tour: "Greek Islands", date: "2026-07-20", status: "Completed", amount: "$2,150" },
-    { id: 4, customer: "David Brown", tour: "New York City", date: "2026-07-22", status: "Confirmed", amount: "$760" },
-  ];
 
-  const getStatusBadge = (status) => {
-    const colors = {
-      Confirmed: "success",
-      Pending: "warning",
-      Completed: "info",
-    };
-    return `bg-${colors[status] || "secondary"}`;
-  };
+const Dashboard = () => {
+    const { http } = AuthUser()
 
-  return (
-    <div className="dashboard-container">
-      {/* Page Header */}
-      <div className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">
-            <i className="bi bi-speedometer2 me-3 text-primary"></i>
-            Dashboard
-          </h1>
-          <p className="dashboard-subtitle">Welcome back, Admin! Here's what's happening with your tours today.</p>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-primary btn-add">
-            <i className="bi bi-plus-circle me-2"></i>New Booking
-          </button>
-        </div>
-      </div>
+    const [loading, setLoading] = useState(true)
+    const [bookings, setBookings] = useState([])
+    const [customers, setCustomers] = useState([])
+    const [payments, setPayments] = useState([])
+    const [packages, setPackages] = useState([])
+    const [reviews, setReviews] = useState([])
 
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        {stats.map((s, i) => (
-          <div className="stat-card" key={i}>
-            <div className="stat-card-inner">
-              <div className="stat-content">
-                <span className="stat-label">{s.title}</span>
-                <div className="stat-value-wrapper">
-                  <span className="stat-value">{s.value}</span>
-                  <span className={`stat-trend ${s.trendUp ? "trend-up" : "trend-down"}`}>
-                    <i className={`bi bi-${s.trendUp ? "arrow-up" : "arrow-down"}-short`}></i>
-                    {s.trend}
-                  </span>
-                </div>
-              </div>
-              <div className={`stat-icon-wrapper bg-${s.color}-soft`}>
-                <i className={`bi ${s.icon} text-${s.color}`}></i>
-              </div>
+    const getDashboardData = async () => {
+        setLoading(true)
+        await Promise.all([
+            http.get('/booking/list').then((res) => setBookings(res.data || [])).catch(() => setBookings([])),
+            http.get('/customer/list').then((res) => setCustomers(res.data || [])).catch(() => setCustomers([])),
+            http.get('/payment/list').then((res) => setPayments(res.data || [])).catch(() => setPayments([])),
+            http.get('/tourpackage/list').then((res) => setPackages(res.data || [])).catch(() => setPackages([])),
+            http.get('/review/list').then((res) => setReviews(res.data || [])).catch(() => setReviews([]))
+        ]).finally(() => setLoading(false))
+    }
+
+    useEffect(() => {
+        getDashboardData()
+    }, [])
+
+    // ---- Derived stats ----
+    const totalBookings = bookings.length
+    const totalCustomers = customers.length
+    const activePackages = packages.filter((p) => p.is_active).length
+    const totalRevenue = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const pendingPayments = payments.filter((p) => p.payment_status === 'pending' || p.status === 'pending').length
+    const avgRating = reviews.length
+        ? (reviews.reduce((sum, r) => sum + (Number(r.rating) || 0), 0) / reviews.length).toFixed(1)
+        : '0.0'
+
+    const bookingStatusCounts = ['pending', 'confirmed', 'completed', 'cancelled'].map((status) => ({
+        status,
+        count: bookings.filter((b) => b.booking_status === status).length
+    }))
+    const maxBookingStatusCount = Math.max(1, ...bookingStatusCounts.map((s) => s.count))
+
+    const paymentStatusCounts = ['pending', 'paid', 'refunded', 'failed'].map((status) => ({
+        status,
+        count: payments.filter((p) => p.payment_status === status).length
+    }))
+    const maxPaymentStatusCount = Math.max(1, ...paymentStatusCounts.map((s) => s.count))
+
+    const recentBookings = [...bookings]
+        .sort((a, b) => (b.booking_id || 0) - (a.booking_id || 0))
+        .slice(0, 5)
+
+    const recentReviews = [...reviews]
+        .sort((a, b) => (b.booking_id || 0) - (a.booking_id || 0))
+        .slice(0, 4)
+
+    const statusColor = (status) => {
+        switch (status) {
+            case 'confirmed':
+            case 'completed':
+            case 'paid':
+                return '#22c55e'
+            case 'pending':
+                return '#f7971e'
+            case 'cancelled':
+            case 'failed':
+                return '#f5576c'
+            case 'refunded':
+                return '#8a8f98'
+            default:
+                return '#4facfe'
+        }
+    }
+
+    return (
+        <>
+            {/* Breadcrumb */}
+            <div className="page-header">
+                <h3 className="fw-bold">Dashboard</h3>
+                <p className="text-muted mb-0">Overview of bookings, customers, and revenue</p>
             </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Recent Bookings Table */}
-      <div className="table-card">
-        <div className="table-card-header">
-          <div>
-            <h5 className="table-card-title">
-              <i className="bi bi-clock-history me-2 text-primary"></i>
-              Recent Bookings
-            </h5>
-            <p className="table-card-subtitle">Latest customer bookings from the past 7 days</p>
-          </div>
-          <button className="btn btn-outline-primary btn-sm btn-view-all">
-            View All <i className="bi bi-chevron-right ms-1"></i>
-          </button>
-        </div>
-        <div className="table-responsive">
-          <table className="table table-modern">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Tour</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Amount</th>
-                <th className="text-end">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentBookings.map((booking) => (
-                <tr key={booking.id}>
-                  <td>
-                    <div className="customer-cell">
-                      <div className="customer-avatar">
-                        {booking.customer.charAt(0)}
-                      </div>
-                      <span className="customer-name">{booking.customer}</span>
+            {loading ? (
+                <div className="text-center py-5 text-muted">Loading dashboard...</div>
+            ) : (
+                <>
+                    {/* KPI Cards */}
+                    <div className="row g-3 mb-4">
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#667eea', '--kpi-to': '#764ba2' }}>
+                                <i className="fa fa-calendar-check kpi-icon"></i>
+                                <div className="kpi-value">{totalBookings}</div>
+                                <div className="kpi-label">Total Bookings</div>
+                            </div>
+                        </div>
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#4facfe', '--kpi-to': '#00f2fe' }}>
+                                <i className="fa fa-users kpi-icon"></i>
+                                <div className="kpi-value">{totalCustomers}</div>
+                                <div className="kpi-label">Customers</div>
+                            </div>
+                        </div>
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#43e97b', '--kpi-to': '#38f9d7' }}>
+                                <i className="fa fa-rupee-sign kpi-icon"></i>
+                                <div className="kpi-value">{totalRevenue.toLocaleString()}</div>
+                                <div className="kpi-label">Total Revenue</div>
+                            </div>
+                        </div>
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#f7971e', '--kpi-to': '#ffd200' }}>
+                                <i className="fa fa-hourglass-half kpi-icon"></i>
+                                <div className="kpi-value">{pendingPayments}</div>
+                                <div className="kpi-label">Pending Payments</div>
+                            </div>
+                        </div>
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#f093fb', '--kpi-to': '#f5576c' }}>
+                                <i className="fa fa-map-marked-alt kpi-icon"></i>
+                                <div className="kpi-value">{activePackages}</div>
+                                <div className="kpi-label">Active Packages</div>
+                            </div>
+                        </div>
+
+                        <div className="col-6 col-md-4 col-xl-2">
+                            <div className="kpi-card" style={{ '--kpi-from': '#fa709a', '--kpi-to': '#fee140' }}>
+                                <i className="fa fa-star kpi-icon"></i>
+                                <div className="kpi-value">{avgRating}</div>
+                                <div className="kpi-label">Avg. Rating</div>
+                            </div>
+                        </div>
+
                     </div>
-                  </td>
-                  <td>{booking.tour}</td>
-                  <td>{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                  <td>
-                    <span className={`status-badge ${getStatusBadge(booking.status)}`}>
-                      {booking.status}
-                    </span>
-                  </td>
-                  <td className="fw-semibold">{booking.amount}</td>
-                  <td className="text-end">
-                    <button className="btn-action-icon" title="View Details">
-                      <i className="bi bi-three-dots-vertical"></i>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <style jsx>{`
-        .dashboard-container {
-          padding: 24px 28px;
-          background: #f8fafc;
-          min-height: 100vh;
-          font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
+                    <div className="row g-3 mb-4">
 
-        /* Header */
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          flex-wrap: wrap;
-          margin-bottom: 32px;
-          gap: 16px;
-        }
+                        {/* Booking Status Breakdown */}
+                        <div className="col-md-6">
+                            <div className="card shadow-sm h-100">
+                                <div className="card-header bg-white">
+                                    <h6 className="fw-bold mb-0">Booking Status</h6>
+                                </div>
+                                <div className="card-body">
+                                    {bookingStatusCounts.map((item) => (
+                                        <div key={item.status} className="mb-3">
+                                            <div className="d-flex justify-content-between mb-1">
+                                                <span className="text-capitalize small fw-semibold">{item.status}</span>
+                                                <span className="text-muted small">{item.count}</span>
+                                            </div>
+                                            <div className="bar-track">
+                                                <div
+                                                    className="bar-fill"
+                                                    style={{
+                                                        width: `${(item.count / maxBookingStatusCount) * 100}%`,
+                                                        background: statusColor(item.status)
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-        .dashboard-title {
-          font-size: 28px;
-          font-weight: 700;
-          color: #0b1120;
-          margin: 0 0 4px 0;
-          letter-spacing: -0.5px;
-          display: flex;
-          align-items: center;
-        }
+                        {/* Payment Status Breakdown */}
+                        <div className="col-md-6">
+                            <div className="card shadow-sm h-100">
+                                <div className="card-header bg-white">
+                                    <h6 className="fw-bold mb-0">Payment Status</h6>
+                                </div>
+                                <div className="card-body">
+                                    {paymentStatusCounts.map((item) => (
+                                        <div key={item.status} className="mb-3">
+                                            <div className="d-flex justify-content-between mb-1">
+                                                <span className="text-capitalize small fw-semibold">{item.status}</span>
+                                                <span className="text-muted small">{item.count}</span>
+                                            </div>
+                                            <div className="bar-track">
+                                                <div
+                                                    className="bar-fill"
+                                                    style={{
+                                                        width: `${(item.count / maxPaymentStatusCount) * 100}%`,
+                                                        background: statusColor(item.status)
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-        .dashboard-title i {
-          font-size: 30px;
-        }
+                    </div>
 
-        .dashboard-subtitle {
-          font-size: 15px;
-          color: #64748b;
-          margin: 0;
-          font-weight: 400;
-        }
+                    <div className="row g-3">
 
-        .header-actions {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
+                        {/* Recent Bookings */}
+                        <div className="col-md-7">
+                            <div className="card shadow-sm h-100">
+                                <div className="card-header bg-white">
+                                    <h6 className="fw-bold mb-0">Recent Bookings</h6>
+                                </div>
+                                <div className="table-responsive">
+                                    <table className="table table-hover align-middle mb-0">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th>Reference</th>
+                                                <th>Customer</th>
+                                                <th>Travelers</th>
+                                                <th>Total</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {recentBookings.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="5" className="text-center text-muted py-4">No bookings yet</td>
+                                                </tr>
+                                            )}
+                                            {recentBookings.map((b, key) => (
+                                                <tr key={key}>
+                                                    <td>{b.booking_reference}</td>
+                                                    <td>{b.customer_id}</td>
+                                                    <td>{b.number_of_travelers}</td>
+                                                    <td>{b.total_price}</td>
+                                                    <td>
+                                                        <span
+                                                            className="badge text-capitalize"
+                                                            style={{ background: statusColor(b.booking_status) }}
+                                                        >
+                                                            {b.booking_status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
 
-        .btn-add {
-          background: linear-gradient(135deg, #3b82f6, #6366f1);
-          border: none;
-          padding: 10px 22px;
-          font-weight: 600;
-          font-size: 14px;
-          border-radius: 12px;
-          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-          transition: all 0.3s ease;
-          color: white;
-        }
+                        {/* Recent Reviews */}
+                        <div className="col-md-5">
+                            <div className="card shadow-sm h-100">
+                                <div className="card-header bg-white">
+                                    <h6 className="fw-bold mb-0">Recent Reviews</h6>
+                                </div>
+                                <div className="card-body">
+                                    {recentReviews.length === 0 && (
+                                        <div className="text-center text-muted py-4">No reviews yet</div>
+                                    )}
+                                    {recentReviews.map((r, key) => (
+                                        <div key={key} className={key !== recentReviews.length - 1 ? 'pb-3 mb-3 border-bottom' : ''}>
+                                            <div className="d-flex justify-content-between align-items-start">
+                                                <span className="fw-semibold">{r.title}</span>
+                                                <span className="text-warning small">
+                                                    <i className="fa fa-star me-1"></i>{r.rating}
+                                                </span>
+                                            </div>
+                                            <p className="text-muted small mb-0">{r.comment}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-        .btn-add:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
-          background: linear-gradient(135deg, #2563eb, #4f46e5);
-          color: white;
-        }
+                    </div>
+                </>
+            )}
 
-        /* Stats Grid */
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 20px;
-          margin-bottom: 32px;
-        }
-
-        .stat-card {
-          background: white;
-          border-radius: 16px;
-          padding: 20px 24px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-          transition: all 0.3s ease;
-          border: 1px solid rgba(226, 232, 240, 0.6);
-        }
-
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-          border-color: #e2e8f0;
-        }
-
-        .stat-card-inner {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .stat-content {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .stat-label {
-          font-size: 13px;
-          font-weight: 500;
-          color: #94a3b8;
-          text-transform: uppercase;
-          letter-spacing: 0.4px;
-        }
-
-        .stat-value-wrapper {
-          display: flex;
-          align-items: baseline;
-          gap: 12px;
-        }
-
-        .stat-value {
-          font-size: 32px;
-          font-weight: 700;
-          color: #0b1120;
-          letter-spacing: -0.5px;
-          line-height: 1;
-        }
-
-        .stat-trend {
-          font-size: 13px;
-          font-weight: 600;
-          padding: 2px 10px;
-          border-radius: 20px;
-          display: inline-flex;
-          align-items: center;
-          gap: 2px;
-        }
-
-        .stat-trend.trend-up {
-          color: #16a34a;
-          background: #dcfce7;
-        }
-
-        .stat-trend.trend-down {
-          color: #dc2626;
-          background: #fee2e2;
-        }
-
-        .stat-trend i {
-          font-size: 18px;
-          line-height: 1;
-        }
-
-        .stat-icon-wrapper {
-          width: 52px;
-          height: 52px;
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .stat-icon-wrapper i {
-          font-size: 26px;
-        }
-
-        .bg-primary-soft {
-          background: #eff6ff;
-        }
-        .bg-success-soft {
-          background: #f0fdf4;
-        }
-        .bg-warning-soft {
-          background: #fffbeb;
-        }
-
-        .text-primary { color: #3b82f6; }
-        .text-success { color: #22c55e; }
-        .text-warning { color: #f59e0b; }
-
-        /* Table Card */
-        .table-card {
-          background: white;
-          border-radius: 16px;
-          padding: 24px 28px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-          border: 1px solid rgba(226, 232, 240, 0.6);
-        }
-
-        .table-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-
-        .table-card-title {
-          font-size: 18px;
-          font-weight: 600;
-          color: #0b1120;
-          margin: 0;
-          display: flex;
-          align-items: center;
-        }
-
-        .table-card-subtitle {
-          font-size: 14px;
-          color: #94a3b8;
-          margin: 2px 0 0 0;
-        }
-
-        .btn-view-all {
-          border-radius: 10px;
-          padding: 6px 16px;
-          font-weight: 500;
-          border-color: #e2e8f0;
-          color: #475569;
-          transition: all 0.2s ease;
-        }
-
-        .btn-view-all:hover {
-          background: #f1f5f9;
-          border-color: #cbd5e1;
-          color: #0b1120;
-        }
-
-        /* Modern Table */
-        .table-modern {
-          margin: 0;
-          border-collapse: separate;
-          border-spacing: 0 4px;
-          width: 100%;
-        }
-
-        .table-modern thead th {
-          background: #f8fafc;
-          padding: 12px 16px;
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #64748b;
-          border: none;
-          border-radius: 0;
-        }
-
-        .table-modern thead th:first-child {
-          border-radius: 10px 0 0 10px;
-          padding-left: 20px;
-        }
-
-        .table-modern thead th:last-child {
-          border-radius: 0 10px 10px 0;
-          padding-right: 20px;
-        }
-
-        .table-modern tbody tr {
-          background: white;
-          transition: all 0.15s ease;
-          border-radius: 10px;
-        }
-
-        .table-modern tbody tr:hover {
-          background: #f8fafc;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-        }
-
-        .table-modern tbody td {
-          padding: 14px 16px;
-          border: none;
-          vertical-align: middle;
-          font-size: 14px;
-          color: #1e293b;
-        }
-
-        .table-modern tbody td:first-child {
-          border-radius: 10px 0 0 10px;
-          padding-left: 20px;
-        }
-
-        .table-modern tbody td:last-child {
-          border-radius: 0 10px 10px 0;
-          padding-right: 20px;
-        }
-
-        .customer-cell {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .customer-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
-          color: #4f46e5;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          font-size: 14px;
-          flex-shrink: 0;
-        }
-
-        .customer-name {
-          font-weight: 500;
-          color: #0b1120;
-        }
-
-        .status-badge {
-          padding: 4px 14px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.3px;
-          display: inline-block;
-          background: #e2e8f0;
-          color: #475569;
-        }
-
-        .status-badge.bg-success {
-          background: #dcfce7;
-          color: #16a34a;
-        }
-
-        .status-badge.bg-warning {
-          background: #fef3c7;
-          color: #d97706;
-        }
-
-        .status-badge.bg-info {
-          background: #dbeafe;
-          color: #2563eb;
-        }
-
-        .btn-action-icon {
-          background: none;
-          border: none;
-          color: #94a3b8;
-          padding: 4px 8px;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-          font-size: 18px;
-        }
-
-        .btn-action-icon:hover {
-          background: #f1f5f9;
-          color: #0b1120;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-          .dashboard-container {
-            padding: 16px;
-          }
-
-          .dashboard-title {
-            font-size: 22px;
-          }
-
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .stat-value {
-            font-size: 26px;
-          }
-
-          .table-card {
-            padding: 16px;
-          }
-
-          .table-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-
-          .table-modern tbody td,
-          .table-modern thead th {
-            padding: 10px 12px;
-            font-size: 13px;
-          }
-        }
-      `}</style>
-    </div>
-  );
+            <style jsx>{`
+.kpi-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 18px 16px;
+  color: white;
+  background: linear-gradient(135deg, var(--kpi-from) 0%, var(--kpi-to) 100%);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
 }
 
-export default Dashboard;
+.kpi-icon {
+  font-size: 1.1rem;
+  opacity: 0.85;
+}
+
+.kpi-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.kpi-label {
+  font-size: 0.78rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+.bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+    `}</style>
+        </>
+    )
+}
+
+export default Dashboard

@@ -1,4 +1,5 @@
-import { API_URL,axios } from "../Helper/Url_helper";
+import { API_URL } from "../Helper/Url_helper";
+import axios from "axios";
 
 export default function AuthUser(){
   const http = axios.create({

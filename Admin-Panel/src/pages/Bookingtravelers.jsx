@@ -1,46 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddBookingtravelersModal from './Bookingtravelers/AddBookingtravelersModal'
+import ViewBookingtravelersModal from './Bookingtravelers/ViewBookingtravelersModal'
+import EditBookingtravelersModal from './Bookingtravelers/EditBookingtravelersModal'
 
 
 
 
 
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Bookingtravelers = () => {
+    const [Bookingtravelers, setbookingtravelers] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const getbookingtravelers = async () => {
+        await http.get("/bookingtravelers/list")
             .then((res) => {
-                setpayments(res.data)
+                setbookingtravelers(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in bookingtravelers")
             })
     }
     useEffect(() => {
-        getpayments()
+        getbookingtravelers()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddBookingtravelers, setAddbookingtravelers] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddbookingtravelers(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewBookingtravelers, setViewbookingtravelers] = useState(false)
+    const [selectedbookingtravelers, setSelectedbookingtravelers] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectedbookingtravelers(data)
+        setViewbookingtravelers(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditBookingtravelers, setEditbookingtravelers] = useState(false)
+    const [selectedEditBookingtraveler, setSelectedEditBookingtraveler] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditBookingtraveler(data)
+        setEditbookingtravelers(true)
     }
 
 
@@ -48,7 +48,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Booking Travelers</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +59,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Booking Traveler
                 </button>
 
             </div>
@@ -79,7 +79,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Booking Travelers..."
                                 />
                             </div>
                         </div>
@@ -94,30 +94,30 @@ const Payments = () => {
                         <thead className="table-light">
                             <tr>
                                 <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
-                                <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>Name</th>
+                                <th>gender</th>
+                                <th>nationality</th>
+                                <th>passport_number</th>
+                                <th>passport_expiry</th>
+                                <th>Primary</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Bookingtravelers.length > 0 && Bookingtravelers.map((data, key) => (
                                 <tr key={key}>
                                     <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
-                                    <td>{data.currency}</td>
+                                    <td>{data.first_name} {data.last_name}</td>
+                                    <td className="text-capitalize">{data.gender}</td>
+                                    <td className="text-capitalize">{data.nationality}</td>
+                                    <td>{data.passport_number}</td>
+                                    <td>{data.passport_expiry || '-'}</td>
                                     <td>
-                                        <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
+                                        <span className={`badge ${data.is_primary ? 'bg-success' : 'bg-secondary'}`}>
+                                            {data.is_primary ? "Primary" : "Companion"}
                                         </span>
                                     </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +204,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Booking Traveler Modal */}
+            <AddBookingtravelersModal
+                show={AddBookingtravelers}
+                onClose={() => setAddbookingtravelers(false)}
+                onbookingtravelersAdded={() => getbookingtravelers()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Booking Traveler Modal */}
+            <ViewBookingtravelersModal
+                show={ViewBookingtravelers}
+                onClose={() => setViewbookingtravelers(false)}
+                bookingtravelers={selectedbookingtravelers}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Booking Traveler Modal */}
+            <EditBookingtravelersModal
+                show={EditBookingtravelers}
+                onClose={() => setEditbookingtravelers(false)}
+                bookingtraveler={selectedEditBookingtraveler}
+                onBookingtravelerUpdated={() => getbookingtravelers()}
             />
 
 
@@ -277,4 +277,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Bookingtravelers

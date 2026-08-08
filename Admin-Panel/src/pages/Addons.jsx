@@ -1,46 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddAddonsModal from './Addons/Addaddonsmodel'
+import ViewAddonsModal from './Addons/ViewAddonsModal'
+import EditAddonsModal from './Addons/EditAddonsModal'
 
 
 
 
 
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Addons = () => {
+    const [Addons, setaddons] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const getaddons = async () => {
+        await http.get("/addons/list")
             .then((res) => {
-                setpayments(res.data)
+                setaddons(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in addons")
             })
     }
     useEffect(() => {
-        getpayments()
+        getaddons()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddAddons, setAddaddons] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddaddons(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewAddons, setViewaddons] = useState(false)
+    const [selectedaddons, setSelectedaddons] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectedaddons(data)
+        setViewaddons(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditAddons, setEditaddons] = useState(false)
+    const [selectedEditAddon, setSelectedEditAddon] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditAddon(data)
+        setEditaddons(true)
     }
 
 
@@ -48,7 +48,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Addons</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +59,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Addons
                 </button>
 
             </div>
@@ -79,7 +79,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Addons..."
                                 />
                             </div>
                         </div>
@@ -93,31 +93,35 @@ const Payments = () => {
 
                         <thead className="table-light">
                             <tr>
-                                <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
+                                <th>addon_name</th>
+                                <th>description</th>
+                                <th>price</th>
                                 <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>Pricing</th>
+                                <th>Status</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Addons.length > 0 && Addons.map((data, key) => (
                                 <tr key={key}>
-                                    <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
+                                    <td>{data.addon_name}</td>
+                                    <td style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {data.description}
+                                    </td>
+                                    <td>{data.price}</td>
                                     <td>{data.currency}</td>
                                     <td>
-                                        <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
+                                        <span className="badge bg-secondary">
+                                            {data.is_per_person ? "Per Person" : "Flat"}
                                         </span>
                                     </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
+                                    <td>
+                                        <span className={`badge ${data.is_active ? 'bg-success' : 'bg-danger'}`}>
+                                            {data.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +208,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Addon Modal */}
+            <AddAddonsModal
+                show={AddAddons}
+                onClose={() => setAddaddons(false)}
+                onaddonsAdded={() => getaddons()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Addon Modal */}
+            <ViewAddonsModal
+                show={ViewAddons}
+                onClose={() => setViewaddons(false)}
+                addons={selectedaddons}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Addon Modal */}
+            <EditAddonsModal
+                show={EditAddons}
+                onClose={() => setEditaddons(false)}
+                addon={selectedEditAddon}
+                onAddonUpdated={() => getaddons()}
             />
 
 
@@ -277,4 +281,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Addons

@@ -1,46 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddNotificationsModal from './Notifications/AddNotificationsModal'
+import ViewNotificationsModal from './Notifications/ViewNotificationsModal'
+import EditNotificationsModal from './Notifications/EditNotificationsModal'
 
 
 
 
 
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Notifications = () => {
+    const [Notifications, setnotifications] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const getnotifications = async () => {
+        await http.get("/notifications/list")
             .then((res) => {
-                setpayments(res.data)
+                setnotifications(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in notifications")
             })
     }
     useEffect(() => {
-        getpayments()
+        getnotifications()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddNotifications, setAddnotifications] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddnotifications(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewNotifications, setViewnotifications] = useState(false)
+    const [selectednotifications, setSelectednotifications] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectednotifications(data)
+        setViewnotifications(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditNotifications, setEditnotifications] = useState(false)
+    const [selectedEditNotification, setSelectedEditNotification] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditNotification(data)
+        setEditnotifications(true)
     }
 
 
@@ -48,7 +48,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Notifications</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +59,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Notifications
                 </button>
 
             </div>
@@ -79,7 +79,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Notifications..."
                                 />
                             </div>
                         </div>
@@ -93,31 +93,41 @@ const Payments = () => {
 
                         <thead className="table-light">
                             <tr>
-                                <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
-                                <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>recipient_type</th>
+                                <th>recipient_id_type</th>
+                                <th>subject</th>
+                                <th>message</th>
+                                <th>sent_via</th>
+                                <th>Read</th>
+                                <th>status</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Notifications.length > 0 && Notifications.map((data, key) => (
                                 <tr key={key}>
-                                    <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
-                                    <td>{data.currency}</td>
                                     <td>
                                         <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
+                                            {data.recipient_type}
                                         </span>
                                     </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
+                                    <td>{data.recipient_id_type}</td>
+                                    <td>{data.subject}</td>
+                                    <td style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {data.message}
+                                    </td>
+                                    <td className="text-capitalize">{data.sent_via}</td>
+                                    <td>
+                                        <span className={`badge ${data.is_read ? 'bg-success' : 'bg-secondary'}`}>
+                                            {data.is_read ? "Read" : "Unread"}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span className={`badge text-capitalize ${data.status === 'sent' ? 'bg-success' : data.status === 'pending' ? 'bg-warning text-dark' : data.status === 'failed' ? 'bg-danger' : 'bg-secondary'}`}>
+                                            {data.status}
+                                        </span>
+                                    </td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +214,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Notification Modal */}
+            <AddNotificationsModal
+                show={AddNotifications}
+                onClose={() => setAddnotifications(false)}
+                onnotificationsAdded={() => getnotifications()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Notification Modal */}
+            <ViewNotificationsModal
+                show={ViewNotifications}
+                onClose={() => setViewnotifications(false)}
+                notifications={selectednotifications}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Notification Modal */}
+            <EditNotificationsModal
+                show={EditNotifications}
+                onClose={() => setEditnotifications(false)}
+                notification={selectedEditNotification}
+                onNotificationUpdated={() => getnotifications()}
             />
 
 
@@ -277,4 +287,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Notifications

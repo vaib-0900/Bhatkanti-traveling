@@ -1,46 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddReviewsModal from './Reviews/AddReviewsModal'
+import ViewReviewsModal from './Reviews/ViewReviewsModal'
+import EditReviewsModal from './Reviews/EditReviewsModal'   
 
 
 
 
 
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Reviews = () => {
+    const [Reviews, setreviews] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const getreviews = async () => {
+        await http.get("/reviews/list")
             .then((res) => {
-                setpayments(res.data)
+                setreviews(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in reviews")
             })
     }
     useEffect(() => {
-        getpayments()
+        getreviews()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddReviews, setAddreviews] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddreviews(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewReviews, setViewreviews] = useState(false)
+    const [selectedreviews, setSelectedreviews] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectedreviews(data)
+        setViewreviews(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditReviews, setEditreviews] = useState(false)
+    const [selectedEditReview, setSelectedEditReview] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditReview(data)
+        setEditreviews(true)
     }
 
 
@@ -48,7 +48,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Reviews</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +59,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Reviews
                 </button>
 
             </div>
@@ -79,7 +79,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Reviews..."
                                 />
                             </div>
                         </div>
@@ -94,30 +94,36 @@ const Payments = () => {
                         <thead className="table-light">
                             <tr>
                                 <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
-                                <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>customer_id</th>
+                                <th>package_id</th>
+                                <th>rating</th>
+                                <th>title</th>
+                                <th>comment</th>
+                                <th>Approved</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Reviews.length > 0 && Reviews.map((data, key) => (
                                 <tr key={key}>
                                     <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
-                                    <td>{data.currency}</td>
+                                    <td>{data.customer_id}</td>
+                                    <td>{data.package_id}</td>
                                     <td>
-                                        <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
+                                        <span className="badge bg-warning text-dark">
+                                            <i className="fa fa-star me-1"></i>{data.rating}
                                         </span>
                                     </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
+                                    <td>{data.title}</td>
+                                    <td style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {data.comment}
+                                    </td>
+                                    <td>
+                                        <span className={`badge ${data.is_approved ? 'bg-success' : 'bg-secondary'}`}>
+                                            {data.is_approved ? "Approved" : "Pending"}
+                                        </span>
+                                    </td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +210,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Review Modal */}
+            <AddReviewsModal
+                show={AddReviews}
+                onClose={() => setAddreviews(false)}
+                onreviewsAdded={() => getreviews()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Review Modal */}
+            <ViewReviewsModal
+                show={ViewReviews}
+                onClose={() => setViewreviews(false)}
+                reviews={selectedreviews}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Review Modal */}
+            <EditReviewsModal
+                show={EditReviews}
+                onClose={() => setEditreviews(false)}
+                review={selectedEditReview}
+                onReviewUpdated={() => getreviews()}
             />
 
 
@@ -277,4 +283,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Reviews

@@ -1,46 +1,45 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../Auth/AuthUser'
-import AddPaymentsModal from './Payments/AddPaymentsModal'
-import ViewPaymentsModal from './Payments/ViewPaymentsModal'
-import EditPaymentsModal from './Payments/EditPaymentsModal'
+import AddTourschedulesModal from './Tourschedules/AddTourschedulesModel'
+import ViewTourschedulesModal from './Tourschedules/ViewTourschedulesModel'
+import EditTourschedulesModal from './Tourschedules/EditTourschedulesModal'
 
 
 
 
-
-const Payments = () => {
-    const [Payments, setpayments] = useState([])
+const Tourschedules = () => {
+    const [Tourschedules, settourschedules] = useState([])
     const { http } = AuthUser()
-    const getpayments = async () => {
-        await http.get("/payments/list")
+    const gettourschedules = async () => {
+        await http.get("/tourschedule/list")
             .then((res) => {
-                setpayments(res.data)
+                settourschedules(res.data)
             }).catch((err) => {
                 console.log(err)
-                console.log("Error in payments")
+                console.log("Error in tourschedules")
             })
     }
     useEffect(() => {
-        getpayments()
+        gettourschedules()
     }, [])
 
-    const [AddPayments, setAddpayments] = useState(false)
+    const [AddTourschedules, setAddtourschedules] = useState(false)
     const Addmodel = () => {
-        setAddpayments(true)
+        setAddtourschedules(true)
     }
 
-    const [ViewPayments, setViewpayments] = useState(false)
-    const [selectedpayments, setSelectedpayments] = useState(null)
+    const [ViewTourschedules, setViewtourschedules] = useState(false)
+    const [selectedtourschedules, setSelectedtourschedules] = useState(null)
     const Viewmodel = (data) => {
-        setSelectedpayments(data)
-        setViewpayments(true)
+        setSelectedtourschedules(data)
+        setViewtourschedules(true)
     }
 
-    const [EditPayments, setEditpayments] = useState(false)
-    const [selectedEditPayment, setSelectedEditPayment] = useState(null)
+    const [EditTourschedules, setEdittourschedules] = useState(false)
+    const [selectedEditTourschedule, setSelectedEditTourschedule] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditPayment(data)
-        setEditpayments(true)
+        setSelectedEditTourschedule(data)
+        setEdittourschedules(true)
     }
 
 
@@ -48,7 +47,7 @@ const Payments = () => {
         <>
             {/* Breadcrumb */}
             <div className="page-header">
-                <h3 className="fw-bold">Payments</h3>
+                <h3 className="fw-bold">Tourschedules</h3>
                 <ul className="breadcrumbs">
 
                 </ul>
@@ -59,7 +58,7 @@ const Payments = () => {
 
                 <button className="btn btn-attractive" onClick={Addmodel}>
                     <i className="fas fa-user-plus me-2"></i>
-                    Add Payments
+                    Add Tourschedules
                 </button>
 
             </div>
@@ -79,7 +78,7 @@ const Payments = () => {
 
                                 <input
                                     className="form-control"
-                                    placeholder="Search Payments..."
+                                    placeholder="Search Tourschedules..."
                                 />
                             </div>
                         </div>
@@ -93,31 +92,36 @@ const Payments = () => {
 
                         <thead className="table-light">
                             <tr>
-                                <th>booking_id</th>
-                                <th>payment_reference</th>
-                                <th>amount</th>
-                                <th>currency</th>
-                                <th>payment_method</th>
-                                <th>transaction_id</th>
-                                <th>processed_by</th>
+                                <th>package_id</th>
+                                <th>departure_date</th>
+                                <th>return_date</th>
+                                <th>available_seats</th>
+                                <th>total_seats</th>
+                                <th>is_cancelled</th>
+                                <th>price_override</th>
+                                <th>notes</th>
+                                <th>Status</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            {Payments.length > 0 && Payments.map((data, key) => (
+                            {Tourschedules.length > 0 && Tourschedules.map((data, key) => (
                                 <tr key={key}>
-                                    <td>{data.booking_id}</td>
-                                    <td>{data.payment_reference}</td>
-                                    <td>{data.amount}</td>
-                                    <td>{data.currency}</td>
+                                    <td>{data.package_id}</td>
+                                    <td>{data.departure_date}</td>
+                                    <td>{data.return_date}</td>
+                                    <td>{data.available_seats}</td>
+                                    <td>{data.total_seats}</td>
+                                    <td>{data.is_cancelled}</td>
+                                    <td>{data.price_override}</td>
+                                    <td>{data.notes}</td>
+
                                     <td>
-                                        <span className="badge bg-secondary text-capitalize">
-                                            {data.payment_method}
+                                        <span className="badge bg-success">
+                                            {data.isactive ? "Active" : "Inactive"}
                                         </span>
                                     </td>
-                                    <td>{data.transaction_id}</td>
-                                    <td>{data.processed_by}</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {/* View Button */}
                                         <button
@@ -204,26 +208,26 @@ const Payments = () => {
                     </table>
                 </div>
             </div>
-            {/* Add Payment Modal */}
-            <AddPaymentsModal
-                show={AddPayments}
-                onClose={() => setAddpayments(false)}
-                onpaymentsAdded={() => getpayments()}
+            {/* Add Tourschedule Modal */}
+            <AddTourschedulesModal
+                show={AddTourschedules}
+                onClose={() => setAddtourschedules(false)}
+                ontourschedulesAdded={() => gettourschedules()}
             />
 
-            {/* View Payment Modal */}
-            <ViewPaymentsModal
-                show={ViewPayments}
-                onClose={() => setViewpayments(false)}
-                payments={selectedpayments}
+            {/* View Tourschedule Modal */}
+            <ViewTourschedulesModal
+                show={ViewTourschedules}
+                onClose={() => setViewtourschedules(false)}
+                tourschedules={selectedtourschedules}
             />
 
-            {/* Edit Payment Modal */}
-            <EditPaymentsModal
-                show={EditPayments}
-                onClose={() => setEditpayments(false)}
-                payment={selectedEditPayment}
-                onPaymentUpdated={() => getpayments()}
+            {/* Edit Tourschedule Modal */}
+            <EditTourschedulesModal
+                show={EditTourschedules}
+                onClose={() => setEdittourschedules(false)}
+                tourschedule={selectedEditTourschedule}
+                onTourscheduleUpdated={() => gettourschedules()}
             />
 
 
@@ -277,4 +281,4 @@ const Payments = () => {
     )
 }
 
-export default Payments
+export default Tourschedules
