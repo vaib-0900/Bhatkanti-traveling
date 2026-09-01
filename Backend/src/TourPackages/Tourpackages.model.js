@@ -4,63 +4,58 @@ const TourpackagesSchema = new mongoose.Schema({
 
     package_name: {
         type: String,
-        required: true,
+     
     },
     slug: {
         type: String,
-        required: true,
+     
     },
     description: {
         type: String,
-        required: true,
+       
     },
     destination: {
         type: String,
-        required: true,
+       
     },
     duration_days: {
         type: String,
-        required: true,
+       
     },
     duration_nights: {
         type: String,
-        required: true,
+    
     },
     base_price: {
         type: String,
-        required: true,
+      
     },
     discount_price: {
         type: String,
-        required: true,
     },
     max_group_size: {
         type: Number,
-        required: true,
     },
     min_group_size: {
         type: Number,
-        required: true,
     },
     inclusions: {
         type: String,
-        required: true,
     },
     exclusions: {
         type: String,
-        required: true,
     },
     itinerary: {
         type: String,
-        required: true,
+       
     },
     gallery_images: {
-        type: Object,
-        required: true,
+        type: String,
+       
     },
     featured_image: {
         type: String,
-        required: true,
+       
     },
     is_featured: {
         type: Boolean,
@@ -70,16 +65,16 @@ const TourpackagesSchema = new mongoose.Schema({
          type: Boolean,
         default: true,
     },
-    status: {
-        type: String,
-        enum: ["draft", "published", "archived"],
-        default: 'draft'
-    },
-    category: {
-        type: String,
-        enum: ["draft", "published", "archived"],
-        default: 'draft'
-    },
+   status: {
+    type: String,
+    enum: ["draft", "published", "archived"],
+    default: 'draft'
+},
+category: {
+    type: String,
+    enum: ["adventure", "beach", "hill-station", "heritage", "wildlife", "fort", "religious", "honeymoon"],
+    default: 'adventure'
+},
 },
 {
     timestamps:true

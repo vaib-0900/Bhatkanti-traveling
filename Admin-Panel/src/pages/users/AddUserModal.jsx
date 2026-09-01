@@ -1,254 +1,279 @@
-import React, { useRef, useState } from 'react'
-import AuthUser from '../../Auth/AuthUser'
+import React, { useState } from "react";
+import AuthUser from "../../Auth/AuthUser";
 
 
-const AddUserModal = ({ show, onClose, onUserAdded }) => {
-  const { http } = AuthUser()
-  const fileInputRef = useRef(null)
-
-  const initialFormData = {
-    username: '',
-    email: '',
-    full_name: '',
-    role: '',
-    password: '',
+const AddUserModel = ({
+  showModal,
+  setShowModal,
+  closeAddModal,
+  isRefresh,
+  setIsRefresh,
+}) => {
+  const [userData, setuserData] = useState({
+    username: "",
+    email: "",
+    full_name: "",
+    role: "",
+    password: "",
     profile_image: null,
-  }
+  });
+  const { https } = AuthUser ();
 
-  const [formData, setFormData] = useState(initialFormData)
-  const [previewImage, setPreviewImage] = useState(null)
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
+  const handleSaveUser = () => {
+    const formData = new FormData();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    formData.append("username", userData.username);
+    formData.append("email", userData.email);
+    formData.append("full_name", userData.full_name);
+    formData.append("role", userData.role);
+    formData.append("password", userData.password);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setFormData((prev) => ({ ...prev, profile_image: file }))
-      setPreviewImage(URL.createObjectURL(file))
-    }
-  }
-
-  const resetForm = () => {
-    setFormData(initialFormData)
-    setPreviewImage(null)
-    setErrors({})
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
-  const handleClose = () => {
-    resetForm()
-    onClose()
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setErrors({})
-
-    const payload = new FormData()
-    payload.append('username', formData.username)
-    payload.append('email', formData.email)
-    payload.append('full_name', formData.full_name)
-    payload.append('role', formData.role)
-    payload.append('password', formData.password)
-    if (formData.profile_image) {
-      payload.append('profile_image', formData.profile_image)
+    if (userData.profile_image) {
+      formData.append("image", userData.profile_image);
     }
 
-    await http
-      .post('/user/store', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+    https
+      .post("/user/store", formData)
       .then((res) => {
-        setLoading(false)
-        resetForm()
-        if (onUserAdded) onUserAdded(res.data)
-        onClose()
+        console.log("SUCCESS:", res.data);
+
+        setIsRefresh((prev) => prev + 1);
+        setShowModal(false);
+
+        setuserData({
+          username: "",
+          email: "",
+          full_name: "",
+          role: "",
+          password: "",
+          profile_image: null,
+        });
       })
       .catch((err) => {
-        setLoading(false)
-        console.log(err)
-        console.log('Error adding user')
-        if (err?.response?.data?.errors) {
-          setErrors(err.response.data.errors)
-        }
-      })
-  }
-
-  if (!show) return null
-
+        console.log("STATUS:", err.response?.status);
+        console.log("DATA:", err.response?.data);
+        console.log("ERROR:", err);
+      });
+  };
   return (
     <>
-      {/* Backdrop */}
-      <div className="modal-backdrop fade show"></div>
-
-      {/* Modal */}
-      <div
-        className="modal fade show"
-        style={{ display: 'block' }}
-        tabIndex="-1"
-        role="dialog"
-        onClick={handleClose}
-      >
+      {showModal && (
         <div
-          className="modal-dialog modal-dialog-centered"
-          role="document"
-          onClick={(e) => e.stopPropagation()}
+          className="modal fade show d-block"
+          style={{
+            background: "rgba(15,23,42,0.35)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            zIndex: 1055,
+          }}
         >
-          <div className="modal-content">
-            <form onSubmit={handleSubmit}>
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  <i className="fas fa-user-plus me-2"></i>
-                  Add User
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={handleClose}
-                ></button>
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
+              {/* Header */}
+              <div
+                className="modal-header border-0 px-4 py-3"
+                style={{ background: "#4F46E5" }}
+              >
+                <div className="d-flex justify-content-between align-items-center w-100">
+                  <div>
+                    <h4 className="fw-bold mb-1 text-white">Add New User</h4>
+                    <small className="text-white-50">
+                      Create a new user account
+                    </small>
+                  </div>
+
+                  <button
+                    className="btn btn-light rounded-circle"
+                    onClick={() => setShowModal(false)}
+                    style={{ width: 40, height: 40 }}
+                  >
+                    <i className="bi bi-x-lg"></i>
+                  </button>
+                </div>
               </div>
 
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    className={`form-control ${errors.username ? 'is-invalid' : ''}`}
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.username && (
-                    <div className="invalid-feedback">{errors.username}</div>
-                  )}
-                </div>
+              {/* Body */}
+              <div className="modal-body px-4">
+                <form>
+                  {/* Profile Image */}
+                  <div className="text-center mb-4">
+                    <label
+                      htmlFor="profileImage"
+                      className="border border-2 border-dashed rounded-4 p-4 d-flex flex-column align-items-center justify-content-center"
+                      style={{
+                        width: "180px",
+                        height: "220px",
+                        margin: "0 auto",
+                        cursor: "pointer",
+                        background: "#F8FAFC",
+                        transition: "0.3s",
+                      }}
+                    >
+                      {userData.profile_image ? (
+                        <img
+                          src={URL.createObjectURL(userData.profile_image)}
+                          alt="Profile"
+                          className="rounded-4"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <i
+                            className="bi bi-cloud-arrow-up"
+                            style={{
+                              fontSize: "45px",
+                              color: "#2563EB",
+                            }}
+                          ></i>
 
-                <div className="mb-3">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.email && (
-                    <div className="invalid-feedback">{errors.email}</div>
-                  )}
-                </div>
+                          <h6 className="mt-3 mb-1 fw-bold">Upload Photo</h6>
 
-                <div className="mb-3">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    name="full_name"
-                    className={`form-control ${errors.full_name ? 'is-invalid' : ''}`}
-                    value={formData.full_name}
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.full_name && (
-                    <div className="invalid-feedback">{errors.full_name}</div>
-                  )}
-                </div>
+                          <small className="text-muted">JPG, PNG or JPEG</small>
+                        </>
+                      )}
+                    </label>
 
-                <div className="mb-3">
-                  <label className="form-label">Role</label>
-                  <select
-                    name="role"
-                    className={`form-select ${errors.role ? 'is-invalid' : ''}`}
-                    value={formData.role}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select role</option>
-                    <option value="admin">Admin</option>
-                    <option value="manager">Manager</option>
-                    <option value="user">User</option>
-                  </select>
-                  {errors.role && (
-                    <div className="invalid-feedback">{errors.role}</div>
-                  )}
-                </div>
+                    <input
+                      type="file"
+                      id="profileImage"
+                      className="d-none"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setuserData({
+                          ...userData,
+                          profile_image: e.target.files[0],
+                        })
+                      }
+                    />
+                  </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Profile Image</label>
-                  <input
-                    type="file"
-                    name="profile_image"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    className={`form-control ${errors.profile_image ? 'is-invalid' : ''}`}
-                    onChange={handleImageChange}
-                  />
-                  {errors.profile_image && (
-                    <div className="invalid-feedback">{errors.profile_image}</div>
-                  )}
-                  {previewImage && (
-                    <div className="mt-2">
-                      <img
-                        src={previewImage}
-                        alt="Preview"
-                        style={{
-                          width: '70px',
-                          height: '70px',
-                          objectFit: 'cover',
-                          borderRadius: '8px',
-                          border: '1px solid #ddd',
-                        }}
+                  {/* User Information */}
+                  <h5 className="fw-bold mb-3">User Information</h5>
+
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label">Full Name</label>
+
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="full_name"
+                        placeholder="Enter Full Name"
+                        value={userData.full_name}
+                        onChange={(e) =>
+                          setuserData({
+                            ...userData,
+                            full_name: e.target.value,
+                          })
+                        }
                       />
                     </div>
-                  )}
-                </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
-                  {errors.password && (
-                    <div className="invalid-feedback">{errors.password}</div>
-                  )}
-                </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Username</label>
+
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="username"
+                        placeholder="Enter Username"
+                        value={userData.username}
+                        onChange={(e) =>
+                          setuserData({
+                            ...userData,
+                            username: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Email</label>
+
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        placeholder="Enter Email"
+                        value={userData.email}
+                        onChange={(e) =>
+                          setuserData({
+                            ...userData,
+                            email: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Password</label>
+
+                      <input
+                        type="password"
+                        className="form-control"
+                        name="password"
+                        placeholder="Enter Password"
+                        value={userData.password}
+                        onChange={(e) =>
+                          setuserData({
+                            ...userData,
+                            password: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label">Role</label>
+
+                      <select
+                        className="form-select"
+                        name="role"
+                        value={userData.role}
+                        onChange={(e) =>
+                          setuserData({
+                            ...userData,
+                            role: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="agent">Agent</option>
+                      </select>
+                    </div>
+                  </div>
+                </form>
               </div>
 
-              <div className="modal-footer">
+              {/* Footer */}
+              <div className="modal-footer border-0">
                 <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleClose}
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
-                  className="btn btn-attractive"
-                  disabled={loading}
+                  className="btn btn-primary px-4"
+                  onClick={handleSaveUser}
                 >
-                  {loading ? 'Saving...' : 'Save User'}
+                  Add User
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
-  )
-}
+  );
+};
 
-export default AddUserModal
+export default AddUserModel;

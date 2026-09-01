@@ -1,5 +1,5 @@
 const ReviewsModel = require("./Reviews.model")
-const Reviews = require("./Reviews.model")
+
 
 const list = async (req, res) => {
      try {
@@ -58,57 +58,82 @@ const store = async (req, res) => {
      }
      return res.json("i am store function");
 }
-const show = async (req,res) =>{
+const show = async (req, res) => {
      try {
-        const {id} =req.params 
-        const data = await ReviewsModel.findById({_id:id})
-        return res.json(id) 
-     }  catch (error) {
-     console.log(error)
-     return res.json('internal server error..')
-    }   
-}
-const deleted = async (req,res) =>{
-      try {
-        const {id} =req.params 
-        const data = await ReviewsModel.deleteOne({_id:id})
-          return res.json({message:"Record Deleted Sucessfully..."})
-        return res.json(id) 
-     }  catch (error) {
-     console.log(error)
-     return res.json('internal server error..')
-    }   
-   
-}
-const updated = async (req, res) => {
-     try {
-          const {
-               booking_id,
-               customer_id,
-               package_id,
-               rating,
-               title,
-               comment,
-               is_approved
-          } = req.body
-          return res.json(
-               {
-                    booking_id,
-                    customer_id,
-                    package_id,
-                    rating,
-                    title,
-                    comment,
-                    is_approved
-               }
-          )
+          const { id } = req.params
+          const data = await ReviewsModel.findById({ _id: id })
+          return res.json(id)
      } catch (error) {
           console.log(error)
-          return res.status(500).json({
-               message: "update error"
-          })
+          return res.json('internal server error..')
      }
 }
+const deleted = async (req, res) => {
+     try {
+          const { id } = req.params
+          const data = await ReviewsModel.deleteOne({ _id: id })
+          return res.json({ message: "Record Deleted Sucessfully..." })
+          return res.json(id)
+     } catch (error) {
+          console.log(error)
+          return res.json('internal server error..')
+     }
+
+}
+
+
+const updated = async (req, res) => {
+     try {
+          console.log("UPDATE BODY:", req.body);
+
+          const { _id } = req.body;
+
+          if (!_id) {
+               return res.status(400).json({
+                    message: "Booking ID is required",
+               });
+          }
+
+          const updateData = {
+               booking_id: req.body.booking_id,
+               customer_id: req.body.customer_id,
+               package_id: req.body.package_id,
+               rating: req.body.rating,
+               title: req.body.title,
+               comment: req.body.comment,
+               is_approved: req.body.is_approved
+
+          };
+
+          const data = await ReviewsModel.findByIdAndUpdate(
+               _id,
+               updateData,
+               {
+                    new: true,
+                    runValidators: true,
+               }
+          );
+
+          if (!data) {
+               return res.status(404).json({
+                    message: "Reviews not found",
+               });
+          }
+
+          return res.status(200).json({
+               message: "Reviews updated successfully",
+               data: data,
+          });
+
+     } catch (error) {
+          console.log("Reviews UPDATE ERROR:", error);
+
+          return res.status(500).json({
+               message: "Booking update error",
+               error: error.message,
+          });
+     }
+};
 
 module.exports = {
      list,

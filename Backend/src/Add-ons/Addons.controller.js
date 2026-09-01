@@ -77,35 +77,59 @@ const deleted = async (req,res) =>{
     }   
    
 }
-const updated = async (req,res) =>{
-     try {
-           const{
-               addon_name,
-               description,
-               price,
-               currency,
-               is_per_person,
-               is_active
-              
-           }= req.body
-           return res.json(
-               {
-               addon_name,
-               description,
-               price,
-               currency,
-               is_per_person,
-               is_active
-               }
-          )
-     } catch (error) {
-           console.log(error)
-          return res.status(500).json({
-          message:"update error"
-          })
-     }
-}
 
+
+const updated = async (req, res) => {
+  try {
+    console.log("UPDATE BODY:", req.body);
+
+    const { _id } = req.body;
+
+    if (!_id) {
+      return res.status(400).json({
+        message: "addon ID is required",
+      });
+    }
+
+    const updateData = {
+      addon_name: req.body.addon_name,
+      description: req.body.description,
+      price: req.body.price,
+      currency: req.body.currency,
+      is_per_person: req.body.is_per_person,
+      is_active: req.body.is_active,
+     
+    };
+
+    const data = await AddonsModel.findByIdAndUpdate(
+      _id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!data) {
+      return res.status(404).json({
+        message: "addon not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "addon updated successfully",
+      data: data,
+    });
+
+  } catch (error) {
+    console.log("addon UPDATE ERROR:", error);
+
+    return res.status(500).json({
+      message: "addon update error",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
     list,

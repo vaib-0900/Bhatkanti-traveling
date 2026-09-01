@@ -7,12 +7,12 @@ import Tourpackages from "./pages/Tourpackages";
 import Customers from "./pages/Customers";
 import Payments from "./pages/Payments";
 import Users from "./pages/Users"
-import Tourschedules from "./pages/Tourschedules";
 import Reviews from "./pages/Reviews";
 import Notifications from "./pages/Notifications";
 import Bookingtravelers from "./pages/Bookingtravelers";
 import Bookingaddons from "./pages/Bookingaddons";
 import Addons from "./pages/Addons";
+import Tourschedules from "./pages/Tourschedules";
 
 
 

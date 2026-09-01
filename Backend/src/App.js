@@ -21,6 +21,8 @@ app.use('/api', require('./Bookings/Bookings.route'))
 app.use('/api', require('./Booking-Addons/Bookingaddons.route'))
 app.use('/api', require('./Add-ons/Addons.route'))
 
+app.use("/media", express.static("media"));
+
 
 
 

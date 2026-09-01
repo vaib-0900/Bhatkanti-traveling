@@ -36,13 +36,32 @@ const Bookings = () => {
         setViewbookings(true)
     }
 
-    const [EditBookings, setEditbookings] = useState(false)
-    const [selectedEditBooking, setSelectedEditBooking] = useState(null)
+    const [EditBookings, setEditBooking] = useState(false)
+    const [selectedBooking, setSelectedBooking] = useState(null)
     const Editmodel = (data) => {
-        setSelectedEditBooking(data)
-        setEditbookings(true)
+        setSelectedBooking(data)
+        setEditBooking(true)
+
     }
 
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+
+    try {
+      const res = await http.delete(`/bookings/delete/${id}`);
+
+      console.log("DELETE SUCCESS:", res.data);
+
+      // table refresh
+      getbookings();
+
+    } catch (error) {
+      console.log("DELETE ERROR:", error);
+    }
+  };
 
     return (
         <>
@@ -156,7 +175,10 @@ const Bookings = () => {
                                         {/* Edit Button */}
                                         <button
                                             className="btn btn-sm me-2"
-                                            onClick={() => Editmodel(data)}
+                                            onClick={() => {
+                                                setSelectedBooking(data);
+                                                setEditBooking(true);
+                                            }}
                                             style={{
                                                 background: 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)',
                                                 border: 'none',
@@ -181,30 +203,31 @@ const Bookings = () => {
                                         {/* Delete Button */}
                                         <button
                                             className="btn btn-sm"
-                                            onClick={() => {
-                                                if (window.confirm('Are you sure you want to delete this item?')) {
-                                                    console.log('Deleted:', data);
-                                                }
-                                            }}
+                                            onClick={() => handleDelete(data._id)}
                                             style={{
-                                                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                                                border: 'none',
-                                                color: 'white',
-                                                padding: '6px 14px',
-                                                borderRadius: '20px',
-                                                transition: 'all 0.3s ease',
-                                                boxShadow: '0 4px 15px rgba(245, 87, 108, 0.3)'
+                                                background:
+                                                    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                                                border: "none",
+                                                color: "white",
+                                                padding: "6px 14px",
+                                                borderRadius: "20px",
+                                                transition: "all 0.3s ease",
+                                                boxShadow:
+                                                    "0 4px 15px rgba(245, 87, 108, 0.3)",
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.target.style.transform = 'translateY(-2px)';
-                                                e.target.style.boxShadow = '0 6px 25px rgba(245, 87, 108, 0.5)';
+                                                e.currentTarget.style.transform = "translateY(-2px)";
+                                                e.currentTarget.style.boxShadow =
+                                                    "0 6px 25px rgba(245, 87, 108, 0.5)";
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.target.style.transform = 'translateY(0)';
-                                                e.target.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.3)';
+                                                e.currentTarget.style.transform = "translateY(0)";
+                                                e.currentTarget.style.boxShadow =
+                                                    "0 4px 15px rgba(245, 87, 108, 0.3)";
                                             }}
                                         >
-                                            <i className="fa fa-trash me-1"></i> Delete
+                                            <i className="fa fa-trash me-1"></i>
+                                            Delete
                                         </button>
                                     </td>
                                 </tr>
@@ -230,13 +253,13 @@ const Bookings = () => {
             {/* Edit Booking Modal */}
             <EditBookingsModal
                 show={EditBookings}
-                onClose={() => setEditbookings(false)}
-                booking={selectedEditBooking}
-                onBookingUpdated={() => getbookings()}
+                onClose={() => setEditBooking(false)}
+                booking={selectedBooking}
+                onBookingUpdated={getbookings}
             />
 
 
-            <style jsx>{`
+            <style>{`
 .btn-attractive {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;

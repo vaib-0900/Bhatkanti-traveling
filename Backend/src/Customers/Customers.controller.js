@@ -102,47 +102,64 @@ const deleted = async (req, res) => {
 }
 const updated = async (req, res) => {
      try {
-          const {
-               email,
-               password_hash,
-               first_name,
-               last_name,
-               phone,
-               date_of_birth,
-               nationality,
-               passport_number,
-               address,
-               emergency_contact_name,
-               emergency_contact_phone,
-               is_active,
-               preferred_language,
-               newsletter_subscription
-          } = req.body
-          return res.json(
+          console.log("UPDATE BODY:", req.body);
+
+          const { _id } = req.body;
+
+          if (!_id) {
+               return res.status(400).json({
+                    message: " Customers ID is required",
+               });
+          }
+
+          const updateData = {
+               email: req.body.email,
+               password_hash: req.body.password_hash,
+               first_name: req.body.first_name,
+               last_name: req.body.last_name,
+               phone: req.body.phone,
+               date_of_birth: req.body.date_of_birth,
+               nationality: req.body.nationality,
+               passport_number: req.body.passport_number,
+               address: req.body.address,
+               emergency_contact_name: req.body.emergency_contact_name,
+               emergency_contact_phone: req.body.emergency_contact_phone,
+               is_active: req.body.is_active,
+               preferred_language: req.body.preferred_language,
+               newsletter_subscription: req.body.newsletter_subscription
+
+
+          };
+
+          const data = await CustomersModel.findByIdAndUpdate(
+               _id,
+               updateData,
                {
-                    email,
-                    password_hash,
-                    first_name,
-                    last_name,
-                    phone,
-                    date_of_birth,
-                    nationality,
-                    passport_number,
-                    address,
-                    emergency_contact_name,
-                    emergency_contact_phone,
-                    is_active,
-                    preferred_language,
-                    newsletter_subscription
+                    new: true,
+                    runValidators: true,
                }
-          )
+          );
+
+          if (!data) {
+               return res.status(404).json({
+                    message: " Customers not found",
+               });
+          }
+
+          return res.status(200).json({
+               message: " Customers updated successfully",
+               data: data,
+          });
+
      } catch (error) {
-          console.log(error)
+          console.log(" Customers UPDATE ERROR:", error);
+
           return res.status(500).json({
-               message: "update error"
-          })
+               message: " Customers update error",
+               error: error.message,
+          });
      }
-}
+};
 
 
 module.exports = {

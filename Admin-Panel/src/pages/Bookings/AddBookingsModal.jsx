@@ -1,256 +1,520 @@
-import React, { useState } from 'react'
-import AuthUser from '../../Auth/AuthUser'
-
+import React, { useState } from "react";
+import AuthUser from "../../Auth/AuthUser";
 
 const AddBookingsModal = ({ show, onClose, onbookingsAdded }) => {
-    const { http } = AuthUser()
+  const { http } = AuthUser();
 
-    const initialForm = {
-        booking_reference: '',
-        customer_id: '',
-        schedule_id: '',
-        number_of_travelers: '',
-        number_of_adults: '',
-        number_of_children: '',
-        total_price: '',
-        discount_applied: '',
-        booking_status: 'pending',
-        payment_status: 'pending',
-        special_requests: '',
-        cancellation_reason: ''
+  const initialForm = {
+    booking_reference: "",
+    customer_id: "",
+    schedule_id: "",
+    number_of_travelers: "",
+    number_of_adults: "",
+    number_of_children: "",
+    total_price: "",
+    discount_applied: "",
+    booking_status: "pending",
+    payment_status: "pending",
+    special_requests: "",
+    cancellation_reason: "",
+  };
+
+  const [form, setForm] = useState(initialForm);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  // Input change
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Remove error when user starts typing
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+  };
+
+  // Close modal and reset form
+  const resetAndClose = () => {
+    setForm(initialForm);
+    setErrors({});
+    setSubmitting(false);
+    onClose();
+  };
+
+  // Validation
+  const validate = () => {
+    const newErrors = {};
+
+    if (!form.booking_reference.trim()) {
+      newErrors.booking_reference = "Booking reference is required";
     }
 
-    const [form, setForm] = useState(initialForm)
-    const [errors, setErrors] = useState({})
-    const [submitting, setSubmitting] = useState(false)
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target
-        setForm((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }))
+    if (!form.customer_id) {
+      newErrors.customer_id = "Customer ID is required";
     }
 
-    const resetAndClose = () => {
-        setForm(initialForm)
-        setErrors({})
-        onClose()
+    if (!form.schedule_id) {
+      newErrors.schedule_id = "Schedule ID is required";
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        setSubmitting(true)
-        setErrors({})
-
-        await http.post('/booking/store', form)
-            .then(() => {
-                setSubmitting(false)
-                setForm(initialForm)
-                if (onbookingsAdded) onbookingsAdded()
-                onClose()
-            })
-            .catch((err) => {
-                setSubmitting(false)
-                console.log(err)
-                console.log('Error in adding booking')
-                if (err?.response?.data?.errors) {
-                    setErrors(err.response.data.errors)
-                }
-            })
+    if (!form.number_of_travelers) {
+      newErrors.number_of_travelers =
+        "Number of travelers is required";
     }
 
-    if (!show) return null
+    if (!form.number_of_adults) {
+      newErrors.number_of_adults =
+        "Number of adults is required";
+    }
 
-    return (
-        <>
-            <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" role="dialog">
-                <div className="modal-dialog modal-lg" role="document">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title fw-bold">Add Booking</h5>
-                            <button type="button" className="btn-close" onClick={resetAndClose}></button>
-                        </div>
+    if (form.number_of_children === "") {
+      newErrors.number_of_children =
+        "Number of children is required";
+    }
 
-                        <form onSubmit={handleSubmit}>
-                            <div className="modal-body">
-                                <div className="row g-3">
+    if (!form.total_price) {
+      newErrors.total_price = "Total price is required";
+    }
 
-                                    <div className="col-md-6">
-                                        <label className="form-label">Booking Reference</label>
-                                        <input
-                                            type="text"
-                                            name="booking_reference"
-                                            className={`form-control ${errors.booking_reference ? 'is-invalid' : ''}`}
-                                            value={form.booking_reference}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.booking_reference && <div className="invalid-feedback">{errors.booking_reference}</div>}
-                                    </div>
+    setErrors(newErrors);
 
-                                    <div className="col-md-3">
-                                        <label className="form-label">Customer ID</label>
-                                        <input
-                                            type="number"
-                                            name="customer_id"
-                                            className={`form-control ${errors.customer_id ? 'is-invalid' : ''}`}
-                                            value={form.customer_id}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.customer_id && <div className="invalid-feedback">{errors.customer_id}</div>}
-                                    </div>
+    return Object.keys(newErrors).length === 0;
+  };
 
-                                    <div className="col-md-3">
-                                        <label className="form-label">Schedule ID</label>
-                                        <input
-                                            type="number"
-                                            name="schedule_id"
-                                            className={`form-control ${errors.schedule_id ? 'is-invalid' : ''}`}
-                                            value={form.schedule_id}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.schedule_id && <div className="invalid-feedback">{errors.schedule_id}</div>}
-                                    </div>
+  // Submit booking
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-                                    <div className="col-md-4">
-                                        <label className="form-label">Number of Travelers</label>
-                                        <input
-                                            type="number"
-                                            name="number_of_travelers"
-                                            className={`form-control ${errors.number_of_travelers ? 'is-invalid' : ''}`}
-                                            value={form.number_of_travelers}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.number_of_travelers && <div className="invalid-feedback">{errors.number_of_travelers}</div>}
-                                    </div>
+    if (!validate()) {
+      return;
+    }
 
-                                    <div className="col-md-4">
-                                        <label className="form-label">Number of Adults</label>
-                                        <input
-                                            type="number"
-                                            name="number_of_adults"
-                                            className={`form-control ${errors.number_of_adults ? 'is-invalid' : ''}`}
-                                            value={form.number_of_adults}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.number_of_adults && <div className="invalid-feedback">{errors.number_of_adults}</div>}
-                                    </div>
+    setSubmitting(true);
 
-                                    <div className="col-md-4">
-                                        <label className="form-label">Number of Children</label>
-                                        <input
-                                            type="number"
-                                            name="number_of_children"
-                                            className={`form-control ${errors.number_of_children ? 'is-invalid' : ''}`}
-                                            value={form.number_of_children}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.number_of_children && <div className="invalid-feedback">{errors.number_of_children}</div>}
-                                    </div>
+    try {
+      const res = await http.post("/bookings/store", form);
 
-                                    <div className="col-md-6">
-                                        <label className="form-label">Total Price</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            name="total_price"
-                                            className={`form-control ${errors.total_price ? 'is-invalid' : ''}`}
-                                            value={form.total_price}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.total_price && <div className="invalid-feedback">{errors.total_price}</div>}
-                                    </div>
+      console.log("BOOKING SUCCESS:", res.data);
 
-                                    <div className="col-md-6">
-                                        <label className="form-label">Discount Applied</label>
-                                        <input
-                                            type="text"
-                                            name="discount_applied"
-                                            className={`form-control ${errors.discount_applied ? 'is-invalid' : ''}`}
-                                            value={form.discount_applied}
-                                            onChange={handleChange}
-                                        />
-                                        {errors.discount_applied && <div className="invalid-feedback">{errors.discount_applied}</div>}
-                                    </div>
+      setForm(initialForm);
+      setErrors({});
 
-                                    <div className="col-md-6">
-                                        <label className="form-label">Booking Status</label>
-                                        <select
-                                            name="booking_status"
-                                            className={`form-select ${errors.booking_status ? 'is-invalid' : ''}`}
-                                            value={form.booking_status}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="pending">Pending</option>
-                                            <option value="confirmed">Confirmed</option>
-                                            <option value="cancelled">Cancelled</option>
-                                            <option value="completed">Completed</option>
-                                        </select>
-                                        {errors.booking_status && <div className="invalid-feedback">{errors.booking_status}</div>}
-                                    </div>
+      if (onbookingsAdded) {
+        onbookingsAdded();
+      }
 
-                                    <div className="col-md-6">
-                                        <label className="form-label">Payment Status</label>
-                                        <select
-                                            name="payment_status"
-                                            className={`form-select ${errors.payment_status ? 'is-invalid' : ''}`}
-                                            value={form.payment_status}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="pending">Pending</option>
-                                            <option value="paid">Paid</option>
-                                            <option value="refunded">Refunded</option>
-                                            <option value="failed">Failed</option>
-                                        </select>
-                                        {errors.payment_status && <div className="invalid-feedback">{errors.payment_status}</div>}
-                                    </div>
+      onClose();
 
-                                    <div className="col-12">
-                                        <label className="form-label">Special Requests</label>
-                                        <textarea
-                                            name="special_requests"
-                                            rows="3"
-                                            className={`form-control ${errors.special_requests ? 'is-invalid' : ''}`}
-                                            value={form.special_requests}
-                                            onChange={handleChange}
-                                        ></textarea>
-                                        {errors.special_requests && <div className="invalid-feedback">{errors.special_requests}</div>}
-                                    </div>
+    } catch (error) {
+      console.log("BOOKING ERROR:", error);
+      console.log("STATUS:", error.response?.status);
+      console.log("DATA:", error.response?.data);
 
-                                    <div className="col-12">
-                                        <label className="form-label">Cancellation Reason</label>
-                                        <textarea
-                                            name="cancellation_reason"
-                                            rows="2"
-                                            className={`form-control ${errors.cancellation_reason ? 'is-invalid' : ''}`}
-                                            value={form.cancellation_reason}
-                                            onChange={handleChange}
-                                        ></textarea>
-                                        {errors.cancellation_reason && <div className="invalid-feedback">{errors.cancellation_reason}</div>}
-                                    </div>
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        setErrors({
+          general:
+            error.response?.data?.message ||
+            "Something went wrong while adding booking",
+        });
+      }
 
-                                </div>
-                            </div>
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-light" onClick={resetAndClose}>
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="btn btn-attractive"
-                                    disabled={submitting}
-                                >
-                                    {submitting ? 'Saving...' : 'Save Booking'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+  if (!show) {
+    return null;
+  }
+
+  return (
+    <>
+      <div
+        className="modal fade show d-block"
+        tabIndex="-1"
+        role="dialog"
+        style={{
+          backgroundColor: "rgba(0,0,0,0.5)",
+        }}
+      >
+        <div
+          className="modal-dialog modal-lg modal-dialog-centered"
+          role="document"
+        >
+          <div className="modal-content">
+
+            {/* Header */}
+            <div className="modal-header">
+              <h5 className="modal-title fw-bold">
+                Add Booking
+              </h5>
+
+              <button
+                type="button"
+                className="btn-close"
+                onClick={resetAndClose}
+              ></button>
             </div>
-            <div className="modal-backdrop fade show"></div>
-        </>
-    )
-}
 
-export default AddBookingsModal
+            {/* Form */}
+            <form onSubmit={handleSubmit}>
+
+              <div className="modal-body">
+
+                {/* General Error */}
+                {errors.general && (
+                  <div className="alert alert-danger">
+                    {errors.general}
+                  </div>
+                )}
+
+                <div className="row g-3">
+
+                  {/* Booking Reference */}
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      Booking Reference
+                    </label>
+
+                    <input
+                      type="text"
+                      name="booking_reference"
+                      className={`form-control ${
+                        errors.booking_reference
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      placeholder="Enter booking reference"
+                      value={form.booking_reference}
+                      onChange={handleChange}
+                    />
+
+                    {errors.booking_reference && (
+                      <div className="invalid-feedback">
+                        {errors.booking_reference}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Customer ID */}
+                  <div className="col-md-3">
+                    <label className="form-label">
+                      Customer ID
+                    </label>
+
+                    <input
+                      type="number"
+                      name="customer_id"
+                      className={`form-control ${
+                        errors.customer_id
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      placeholder="Customer ID"
+                      value={form.customer_id}
+                      onChange={handleChange}
+                    />
+
+                    {errors.customer_id && (
+                      <div className="invalid-feedback">
+                        {errors.customer_id}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Schedule ID */}
+                  <div className="col-md-3">
+                    <label className="form-label">
+                      Schedule ID
+                    </label>
+
+                    <input
+                      type="number"
+                      name="schedule_id"
+                      className={`form-control ${
+                        errors.schedule_id
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      placeholder="Schedule ID"
+                      value={form.schedule_id}
+                      onChange={handleChange}
+                    />
+
+                    {errors.schedule_id && (
+                      <div className="invalid-feedback">
+                        {errors.schedule_id}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Travelers */}
+                  <div className="col-md-4">
+                    <label className="form-label">
+                      Number of Travelers
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      name="number_of_travelers"
+                      className={`form-control ${
+                        errors.number_of_travelers
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      value={form.number_of_travelers}
+                      onChange={handleChange}
+                    />
+
+                    {errors.number_of_travelers && (
+                      <div className="invalid-feedback">
+                        {errors.number_of_travelers}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Adults */}
+                  <div className="col-md-4">
+                    <label className="form-label">
+                      Number of Adults
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      name="number_of_adults"
+                      className={`form-control ${
+                        errors.number_of_adults
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      value={form.number_of_adults}
+                      onChange={handleChange}
+                    />
+
+                    {errors.number_of_adults && (
+                      <div className="invalid-feedback">
+                        {errors.number_of_adults}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Children */}
+                  <div className="col-md-4">
+                    <label className="form-label">
+                      Number of Children
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      name="number_of_children"
+                      className={`form-control ${
+                        errors.number_of_children
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      value={form.number_of_children}
+                      onChange={handleChange}
+                    />
+
+                    {errors.number_of_children && (
+                      <div className="invalid-feedback">
+                        {errors.number_of_children}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total Price */}
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      Total Price
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="total_price"
+                      className={`form-control ${
+                        errors.total_price
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      placeholder="Enter total price"
+                      value={form.total_price}
+                      onChange={handleChange}
+                    />
+
+                    {errors.total_price && (
+                      <div className="invalid-feedback">
+                        {errors.total_price}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Discount */}
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      Discount Applied
+                    </label>
+
+                    <input
+                      type="text"
+                      name="discount_applied"
+                      className={`form-control ${
+                        errors.discount_applied
+                          ? "is-invalid"
+                          : ""
+                      }`}
+                      placeholder="Enter discount"
+                      value={form.discount_applied}
+                      onChange={handleChange}
+                    />
+
+                    {errors.discount_applied && (
+                      <div className="invalid-feedback">
+                        {errors.discount_applied}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Booking Status */}
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      Booking Status
+                    </label>
+
+                    <select
+                      name="booking_status"
+                      className="form-select"
+                      value={form.booking_status}
+                      onChange={handleChange}
+                    >
+                      <option value="pending">
+                        Pending
+                      </option>
+
+                      <option value="confirmed">
+                        Confirmed
+                      </option>
+
+                      <option value="cancelled">
+                        Cancelled
+                      </option>
+
+                      <option value="completed">
+                        Completed
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Payment Status */}
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      Payment Status
+                    </label>
+
+                    <select
+                      name="payment_status"
+                      className="form-select"
+                      value={form.payment_status}
+                      onChange={handleChange}
+                    >
+                      <option value="pending">
+                        Pending
+                      </option>
+
+                      <option value="paid">
+                        Paid
+                      </option>
+
+                      <option value="refunded">
+                        Refunded
+                      </option>
+
+                      <option value="failed">
+                        Failed
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Special Requests */}
+                  <div className="col-12">
+                    <label className="form-label">
+                      Special Requests
+                    </label>
+
+                    <textarea
+                      name="special_requests"
+                      rows="3"
+                      className="form-control"
+                      placeholder="Enter special requests"
+                      value={form.special_requests}
+                      onChange={handleChange}
+                    ></textarea>
+                  </div>
+
+                  {/* Cancellation Reason */}
+                  <div className="col-12">
+                    <label className="form-label">
+                      Cancellation Reason
+                    </label>
+
+                    <textarea
+                      name="cancellation_reason"
+                      rows="2"
+                      className="form-control"
+                      placeholder="Enter cancellation reason"
+                      value={form.cancellation_reason}
+                      onChange={handleChange}
+                    ></textarea>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer">
+
+                <button
+                  type="button"
+                  className="btn btn-light"
+                  onClick={resetAndClose}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting
+                    ? "Saving..."
+                    : "Save Booking"}
+                </button>
+
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div className="modal-backdrop fade show"></div>
+    </>
+  );
+};
+
+export default AddBookingsModal;

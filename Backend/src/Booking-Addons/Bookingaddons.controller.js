@@ -75,32 +75,62 @@ const deleted = async (req,res) =>{
     }   
    
 }
-const updated = async (req,res) =>{
-     try {
-           const{
-              booking_addon_id,
-               booking_id,
-               addon_id,
-               quantity,
-               price_at_time
-              
-           }= req.body
-           return res.json(
-               {
-              booking_addon_id,
-               booking_id,
-               addon_id,
-               quantity,
-               price_at_time
-               }
-          )
-     } catch (error) {
-           console.log(error)
-          return res.status(500).json({
-          message:"update error"
-          })
-     }
-}
+const updated = async (req, res) => {
+  try {
+    console.log("UPDATE PARAMS:", req.params);
+    console.log("UPDATE BODY:", req.body);
+ 
+    const { id } = req.params; // this is booking_addon_id, coming from the URL
+ 
+    const {
+      booking_id,
+      addon_id,
+      quantity,
+      price_at_time,
+    } = req.body;
+ 
+    if (!id) {
+      return res.status(400).json({
+        message: "Booking Addon ID is required in URL",
+      });
+    }
+ 
+    // Build update object only with fields actually sent
+    const updateData = {};
+    if (booking_id !== undefined) updateData.booking_id = booking_id;
+    if (addon_id !== undefined) updateData.addon_id = addon_id;
+    if (quantity !== undefined) updateData.quantity = quantity;
+    if (price_at_time !== undefined) updateData.price_at_time = price_at_time;
+ 
+    const data = await BookingaddonsModel.findOneAndUpdate(
+      { booking_addon_id: id },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+ 
+    if (!data) {
+      return res.status(404).json({
+        message: "Booking addon not found",
+      });
+    }
+ 
+    return res.status(200).json({
+      message: "Booking addon updated successfully",
+      data: data,
+    });
+ 
+  } catch (error) {
+    console.log("BOOKING ADDON UPDATE ERROR:", error);
+ 
+    return res.status(500).json({
+      message: "Booking addon update error",
+      error: error.message,
+    });
+  }
+};
 
 
 module.exports = {

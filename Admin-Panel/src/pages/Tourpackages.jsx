@@ -43,6 +43,24 @@ const Tourpackages = () => {
         setEdittourpackages(true)
     }
 
+     const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+
+    try {
+      const res = await http.delete(`/tourpackages/delete/${id}`);
+
+      console.log("DELETE SUCCESS:", res.data);
+
+      // table refresh
+      gettourpackages();
+
+    } catch (error) {
+      console.log("DELETE ERROR:", error);
+    }
+  };
+
 
     return (
         <>
@@ -94,6 +112,7 @@ const Tourpackages = () => {
                         <thead className="table-light">
                             <tr>
                                 <th>Featured Image</th>
+                                <th>Gallery Images</th>
                                 <th>package_name</th>
                                 <th>slug</th>
                                 <th>destination</th>
@@ -112,17 +131,42 @@ const Tourpackages = () => {
                         <tbody>
                             {Tourpackages.length > 0 && Tourpackages.map((data, key) => (
                                 <tr key={key}>
+                                    {/* featured_image */}
                                     <td>
                                         {data.featured_image ? (
                                             <img
-                                                src={data.featured_image}
+                                                src={`http://localhost:3000/media/${data.featured_image}`}
                                                 alt={data.package_name}
-                                                style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }}
+                                                width="70"
+                                                height="70"
+                                                style={{
+                                                    objectFit: "cover",
+                                                    borderRadius: "50%"
+                                                }}
                                             />
                                         ) : (
-                                            <span className="text-muted">-</span>
+                                            "No Image"
                                         )}
                                     </td>
+                                    
+                                       {/* gallery_images */}
+                                     <td>
+                                        {data.gallery_images ? (
+                                            <img
+                                                src={`http://localhost:3000/media/${data.gallery_images}`}
+                                                alt={data.package_name}
+                                                width="70"
+                                                height="70"
+                                                style={{
+                                                    objectFit: "cover",
+                                                    borderRadius: "50%"
+                                                }}
+                                            />
+                                        ) : (
+                                            "No Image"
+                                        )}
+                                    </td>
+
                                     <td>{data.package_name}</td>
                                     <td>{data.slug}</td>
                                     <td>{data.destination}</td>
@@ -204,11 +248,7 @@ const Tourpackages = () => {
                                         {/* Delete Button */}
                                         <button
                                             className="btn btn-sm"
-                                            onClick={() => {
-                                                if (window.confirm('Are you sure you want to delete this item?')) {
-                                                    console.log('Deleted:', data);
-                                                }
-                                            }}
+                                           onClick={() => handleDelete(data._id)}
                                             style={{
                                                 background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                                                 border: 'none',
@@ -259,7 +299,7 @@ const Tourpackages = () => {
             />
 
 
-            <style jsx>{`
+            <style>{`
 .btn-attractive {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;

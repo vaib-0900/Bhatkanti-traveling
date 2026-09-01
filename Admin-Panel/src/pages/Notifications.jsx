@@ -43,6 +43,24 @@ const Notifications = () => {
         setEditnotifications(true)
     }
 
+    const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this payments?")) {
+      return;
+    }
+
+    try {
+      const res = await http.delete(`/notifications/delete/${id}`);
+
+      console.log("DELETE SUCCESS:", res.data);
+
+      // table refresh
+      getnotifications();
+
+    } catch (error) {
+      console.log("DELETE ERROR:", error);
+    }
+  };
+
 
     return (
         <>
@@ -182,11 +200,7 @@ const Notifications = () => {
                                         {/* Delete Button */}
                                         <button
                                             className="btn btn-sm"
-                                            onClick={() => {
-                                                if (window.confirm('Are you sure you want to delete this item?')) {
-                                                    console.log('Deleted:', data);
-                                                }
-                                            }}
+                                              onClick={() => handleDelete(data._id)}
                                             style={{
                                                 background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                                                 border: 'none',

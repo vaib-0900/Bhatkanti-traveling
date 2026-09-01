@@ -5,20 +5,22 @@ const NotificationsSchema = new mongoose.Schema({
     recipient_type: {
         type: String,
         enum:["customer","admin","all"],
-        required: true,
+        default: "customer",
+       
     },
      recipient_id_type: {
         type: String,
         enum:["booking_confirmation","payment_received","reminder","cancellation","promotion"],
-        required: true,
+        default: "booking_confirmation",
+       
     },
      subject: {
         type: String,
-        required: true,
+      
     },
      message: {
         type: String,
-        required: true,
+       
     },
      is_read: {
         type: Boolean,
@@ -27,7 +29,8 @@ const NotificationsSchema = new mongoose.Schema({
      sent_via: {
         type: String,
         enum:["email","sms","inapp"],
-        required: true,
+        default: "email",
+        
     },
      status: {
         type: String,

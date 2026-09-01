@@ -1,6 +1,87 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import AuthUser from "../Auth/AuthUser";
+
+// ==============================
+// Dynamic nav items list
+// countKey links each item to a live count fetched from the API.
+// Items without a countKey (Dashboard, etc.) show no badge
+// unless you add a matching endpoint below.
+// ==============================
+const navItems = [
+  { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
+  { to: "/users", label: "Users", icon: "bi-journal-check", countKey: "users" },
+  { to: "/bookings", label: "Bookings", icon: "bi-journal-check", countKey: "bookings" },
+  { to: "/bookingtravelers", label: "Booking Travelers", icon: "bi-journal-check", countKey: "bookingtravelers" },
+  { to: "/bookingaddons", label: "Booking Addons", icon: "bi-journal-check", countKey: "bookingaddons" },
+  { to: "/addons", label: "Addons", icon: "bi-journal-check", countKey: "addons" },
+  { to: "/tourschedules", label: "Tourschedules", icon: "bi-map", countKey: "tourschedules" },
+  { to: "/tourpackages", label: "Tourpackages", icon: "bi-map", countKey: "tourpackages" },
+  { to: "/reviews", label: "Reviews", icon: "bi-star", countKey: "reviews" },
+  { to: "/customers", label: "Customers", icon: "bi-people", countKey: "customers" },
+  { to: "/payments", label: "Payments", icon: "bi-people", countKey: "payments" },
+  { to: "/notifications", label: "Notifications", icon: "bi-bell", countKey: "notifications" },
+];
+
+// ==============================
+// Maps each countKey to the API endpoint that returns its list.
+// Badge shows the number of items returned (res.data.length or res.data.data.length).
+// Adjust these paths to match your actual list routes.
+// ==============================
+const countEndpoints = {
+  users: "/users",
+  bookings: "/bookings",
+  bookingtravelers: "/bookingtravelers",
+  bookingaddons: "/bookingaddons",
+  addons: "/addons",
+  tourschedules: "/tourschedules",
+  tourpackages: "/tourpackages",
+  reviews: "/reviews",
+  customers: "/customers",
+  payments: "/payments",
+  notifications: "/notifications",
+};
 
 function Sidebar() {
+  const { http } = AuthUser();
+  const [counts, setCounts] = useState({});
+
+  // ==============================
+  // Fetch live counts for every nav item on mount
+  // ==============================
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCounts = async () => {
+      const entries = Object.entries(countEndpoints);
+
+      const results = await Promise.all(
+        entries.map(async ([key, url]) => {
+          try {
+            const res = await http.get(url);
+            const list = Array.isArray(res.data)
+              ? res.data
+              : res.data?.data || [];
+            return [key, list.length];
+          } catch (error) {
+            console.log(`Count fetch failed for ${key}:`, error);
+            return [key, null];
+          }
+        })
+      );
+
+      if (isMounted) {
+        setCounts(Object.fromEntries(results));
+      }
+    };
+
+    fetchCounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [http]);
+
   return (
     <div className="sidebar-wrapper">
       <div className="sidebar-brand">
@@ -16,93 +97,31 @@ function Sidebar() {
       <div className="sidebar-nav">
         <p className="nav-label">MAIN</p>
         <ul className="nav-list">
-          <li>
-            <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-speedometer2"></i></span>
-              <span className="nav-text">Dashboard</span>
-              {({ isActive }) => isActive && <span className="nav-badge">12</span>}
-            </NavLink>
-          </li>
+          {navItems.map((item) => {
+            const badgeCount = item.countKey
+              ? counts[item.countKey]
+              : null;
 
-            <li>
-            <NavLink to="/users" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
-              <span className="nav-text">Users</span>
-              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
-            </NavLink>
-          </li>
-
-          <li>
-            <NavLink to="/bookings" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
-              <span className="nav-text">Bookings</span>
-              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/bookingtravelers" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
-              <span className="nav-text">Booking Travelers</span>
-              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/bookingaddons" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
-              <span className="nav-text">Booking Addons</span>
-              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/addons" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-journal-check"></i></span>
-              <span className="nav-text">Addons</span>
-              {({ isActive }) => isActive && <span className="nav-badge">8</span>}
-            </NavLink>
-          </li>
-            <li>
-            <NavLink to="/tourschedules" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-map"></i></span>
-              <span className="nav-text">Tourschedules</span>
-              {({ isActive }) => isActive && <span className="nav-badge">5</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/tourpackages" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-map"></i></span>
-              <span className="nav-text">Tourpackages</span>
-              {({ isActive }) => isActive && <span className="nav-badge">5</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/reviews" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-star"></i></span>
-              <span className="nav-text">Reviews</span>
-              {({ isActive }) => isActive && <span className="nav-badge">5</span>}
-            </NavLink>
-          </li>
-          
-          <li>
-            <NavLink to="/customers" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-people"></i></span>
-              <span className="nav-text">Customers</span>
-              {({ isActive }) => isActive && <span className="nav-badge">24</span>}
-            </NavLink>
-          </li>
-           <li>
-            <NavLink to="/payments" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-people"></i></span>
-              <span className="nav-text">payments</span>
-              {({ isActive }) => isActive && <span className="nav-badge">24</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/notifications" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              <span className="nav-icon"><i className="bi bi-bell"></i></span>
-              <span className="nav-text">Notifications</span>
-              {({ isActive }) => isActive && <span className="nav-badge">3</span>}
-            </NavLink>
-          </li>
+            return (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `nav-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <span className="nav-icon">
+                    <i className={`bi ${item.icon}`}></i>
+                  </span>
+                  <span className="nav-text">{item.label}</span>
+                  {badgeCount !== null && badgeCount !== undefined && (
+                    <span className="nav-badge">{badgeCount}</span>
+                  )}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
@@ -119,7 +138,7 @@ function Sidebar() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         /* Sidebar Wrapper */
         .sidebar-wrapper {
           width: 260px;
@@ -183,7 +202,6 @@ function Sidebar() {
           text-transform: uppercase;
           letter-spacing: 2px;
           color: #94a3b8;
-          -webkit-text-fill-color: #94a3b8;
           margin-top: 1px;
         }
 

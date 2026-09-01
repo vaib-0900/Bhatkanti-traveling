@@ -84,44 +84,57 @@ const deleted = async (req, res) => {
 }
 
 const updated = async (req, res) => {
-    try {
-        const { id } = req.params
-        const {
-            recipient_type,
-            recipient_id_type,
-            subject,
-            message,
-            is_read,
-            sent_via,
-            status
-        } = req.body
-        
-        const updatedData = await NotificationsModel.findByIdAndUpdate(
-            id,
-            {
-                recipient_type,
-                recipient_id_type,
-                subject,
-                message,
-                is_read,
-                sent_via,
-                status
-            },
-            { new: true } // Returns the updated document
-        )
-        
-        if (!updatedData) {
-            return res.status(404).json({ message: "Record not found" })
-        }
-        
-        return res.json(updatedData)
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            message: "Update error"
-        })
-    }
-}
+     try {
+          console.log("UPDATE BODY:", req.body);
+
+          const { _id } = req.body;
+
+          if (!_id) {
+               return res.status(400).json({
+                    message: " Notification ID is required",
+               });
+          }
+
+          const updateData = {
+               recipient_type: req.body.recipient_type,
+                recipient_id_type: req.body.recipient_id_type,
+                subject: req.body.subject,
+                message: req.body.message,
+                is_read: req.body.is_read,
+                sent_via: req.body.sent_via,
+                status: req.body.status,
+
+          };
+
+          const data = await NotificationsModel.findByIdAndUpdate(
+               _id,
+               updateData,
+               {
+                    new: true,
+                    runValidators: true,
+               }
+          );
+
+          if (!data) {
+               return res.status(404).json({
+                    message: " Notification not found",
+               });
+          }
+
+          return res.status(200).json({
+               message: " Notification updated successfully",
+               data: data,
+          });
+
+     } catch (error) {
+          console.log(" Notification UPDATE ERROR:", error);
+
+          return res.status(500).json({
+               message: " Notification update error",
+               error: error.message,
+          });
+     }
+};
 
 module.exports = {
     list,    // Now this exists!

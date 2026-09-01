@@ -3,23 +3,23 @@ const mongoose = require('mongoose');
 const CustomersSchema = new mongoose.Schema({
     email: {
         type: String,
-        required: true,
+      
     },
     password_hash: {
         type: String,
-        required: true,
+       
     },
     first_name: {
         type: String,
-        required: true,
+      
     },
     last_name: {
         type: String,
-        required: true,
+       
     },
     phone: {
         type: String,
-        required: true,
+       
     },
     date_of_birth: {
          type: Date,
@@ -27,23 +27,23 @@ const CustomersSchema = new mongoose.Schema({
     },
     nationality: {
         type: String,
-        required: true,
+       
     },
     passport_number: {
         type: String,
-        required: true,
+       
     },
     address: {
         type: String,
-        required: true,
+       
     },
     emergency_contact_name: {
         type: String,
-        required: true,
+        
     },
     emergency_contact_phone: {
         type: String,
-        required: true,
+       
     },
     is_active: {
         type: Boolean,

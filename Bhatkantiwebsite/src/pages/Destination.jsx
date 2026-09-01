@@ -191,7 +191,7 @@ const Destination = () => {
                   <div className="bhk-pkg-card">
                     <div className="bhk-pkg-img-wrap">
                       <img
-                        src={data.featured_image || 'default-image.jpg'}
+                        src={`http://localhost:3000/media/${data.featured_image}`}
                         alt={data.package_name}
                       />
                       {data.is_featured && <span className="bhk-pkg-tag">Featured</span>}

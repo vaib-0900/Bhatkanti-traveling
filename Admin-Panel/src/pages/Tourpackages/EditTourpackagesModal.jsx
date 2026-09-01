@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import AuthUser from '../../Auth/AuthUser'
 
-
 const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdated }) => {
-    const { http } = AuthUser()
+    const { http } = AuthUser() // Changed from 'https' to 'http' to match first code
 
     const initialForm = {
         package_name: '',
@@ -31,14 +30,35 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
     const [errors, setErrors] = useState({})
     const [submitting, setSubmitting] = useState(false)
 
+    // Prefill form whenever modal opens with tour package selected for editing
     useEffect(() => {
-        if (tourpackage) {
+        if (show && tourpackage) {
             setForm({
-                ...initialForm,
-                ...tourpackage
+                package_name: tourpackage.package_name || '',
+                slug: tourpackage.slug || '',
+                description: tourpackage.description || '',
+                destination: tourpackage.destination || '',
+                duration_days: tourpackage.duration_days || '',
+                duration_nights: tourpackage.duration_nights || '',
+                base_price: tourpackage.base_price || '',
+                discount_price: tourpackage.discount_price || '',
+                max_group_size: tourpackage.max_group_size || '',
+                min_group_size: tourpackage.min_group_size || '',
+                inclusions: tourpackage.inclusions || '',
+                exclusions: tourpackage.exclusions || '',
+                itinerary: tourpackage.itinerary || '',
+                gallery_images: tourpackage.gallery_images || '',
+                featured_image: tourpackage.featured_image || '',
+                is_featured: !!tourpackage.is_featured,
+                is_active: tourpackage.is_active !== undefined ? !!tourpackage.is_active : true,
+                status: tourpackage.status || 'draft',
+                category: tourpackage.category || ''
             })
+            setErrors({})
+        } else if (!show) {
+            setForm(initialForm)
         }
-    }, [tourpackage])
+    }, [show, tourpackage])
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target
@@ -46,48 +66,189 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }))
+        // Clear error for this field
+        setErrors((prev) => ({
+            ...prev,
+            [name]: ''
+        }))
     }
 
     const resetAndClose = () => {
         setErrors({})
+        setSubmitting(false)
         onClose()
+    }
+
+    // Validation function
+    const validate = () => {
+        const newErrors = {}
+
+        if (!form.package_name.trim()) {
+            newErrors.package_name = 'Package name is required'
+        }
+
+        if (!form.slug.trim()) {
+            newErrors.slug = 'Slug is required'
+        }
+
+        if (!form.destination.trim()) {
+            newErrors.destination = 'Destination is required'
+        }
+
+        if (!form.duration_days || Number(form.duration_days) <= 0) {
+            newErrors.duration_days = 'Duration days must be greater than 0'
+        }
+
+        if (!form.duration_nights || Number(form.duration_nights) < 0) {
+            newErrors.duration_nights = 'Duration nights must be 0 or greater'
+        }
+
+        if (!form.base_price || Number(form.base_price) < 0) {
+            newErrors.base_price = 'Base price is required and must be greater than 0'
+        }
+
+        if (form.discount_price && Number(form.discount_price) > Number(form.base_price)) {
+            newErrors.discount_price = 'Discount price cannot exceed base price'
+        }
+
+        if (!form.max_group_size || Number(form.max_group_size) <= 0) {
+            newErrors.max_group_size = 'Max group size is required and must be greater than 0'
+        }
+
+        if (!form.min_group_size || Number(form.min_group_size) < 0) {
+            newErrors.min_group_size = 'Min group size is required'
+        }
+
+        if (form.min_group_size && form.max_group_size && 
+            Number(form.min_group_size) > Number(form.max_group_size)) {
+            newErrors.min_group_size = 'Min group size cannot exceed max group size'
+        }
+
+        if (!form.category) {
+            newErrors.category = 'Category is required'
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setSubmitting(true)
-        setErrors({})
 
-        await http.put(`/tourpackage/update/${tourpackage.id}`, form)
-            .then(() => {
-                setSubmitting(false)
-                if (onTourpackageUpdated) onTourpackageUpdated()
-                onClose()
+        // Backend reads the id from req.body._id (see `updated` controller),
+        // so the Mongo _id has to travel in the payload, not the URL.
+        const tourpackageId = tourpackage?._id
+
+        if (!tourpackage || !tourpackageId) {
+            setErrors({
+                general: 'No tour package selected to update.'
             })
-            .catch((err) => {
-                setSubmitting(false)
-                console.log(err)
-                console.log('Error in updating tourpackage')
-                if (err?.response?.data?.errors) {
-                    setErrors(err.response.data.errors)
-                }
-            })
+            return
+        }
+
+        if (!validate()) {
+            return
+        }
+
+        setSubmitting(true)
+
+        try {
+            const payload = {
+                _id: tourpackageId,
+                package_name: form.package_name,
+                slug: form.slug,
+                description: form.description,
+                destination: form.destination,
+                duration_days: Number(form.duration_days) || 0,
+                duration_nights: Number(form.duration_nights) || 0,
+                base_price: Number(form.base_price) || 0,
+                discount_price: Number(form.discount_price) || 0,
+                max_group_size: Number(form.max_group_size) || 0,
+                min_group_size: Number(form.min_group_size) || 0,
+                inclusions: form.inclusions || '',
+                exclusions: form.exclusions || '',
+                itinerary: form.itinerary || '',
+                gallery_images: form.gallery_images || '',
+                featured_image: form.featured_image || '',
+                is_featured: Boolean(form.is_featured),
+                is_active: Boolean(form.is_active),
+                status: form.status || 'draft',
+                category: form.category || ''
+            }
+
+            console.log("Sending update data:", payload);
+
+            const res = await http.put("/tourpackages/update", payload)
+
+            console.log("TOURPACKAGE UPDATE SUCCESS:", res.data)
+
+            setErrors({})
+
+            if (onTourpackageUpdated) {
+                onTourpackageUpdated()
+            }
+
+            onClose()
+        } catch (error) {
+            console.log("TOURPACKAGE UPDATE ERROR:", error)
+            console.log("STATUS:", error.response?.status)
+            console.log("DATA:", error.response?.data)
+
+            if (error.response?.data?.errors) {
+                setErrors(error.response.data.errors)
+            } else {
+                setErrors({
+                    general: error.response?.data?.message || 
+                            'Something went wrong while updating tour package'
+                })
+            }
+        } finally {
+            setSubmitting(false)
+        }
     }
 
-    if (!show || !tourpackage) return null
+    if (!show || !tourpackage) {
+        return null
+    }
 
     return (
         <>
-            <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" role="dialog">
-                <div className="modal-dialog modal-lg" role="document">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title fw-bold">Edit Tour Package</h5>
-                            <button type="button" className="btn-close" onClick={resetAndClose}></button>
+            <div
+                className="modal fade show d-block"
+                tabIndex="-1"
+                role="dialog"
+                style={{
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                }}
+            >
+                <div className="modal-dialog modal-lg modal-dialog-centered" role="document">
+                    <div className="modal-content border-0 rounded-4 shadow-lg">
+
+                        {/* Header */}
+                        <div className="modal-header border-0 px-4 py-3" style={{ background: '#4F46E5' }}>
+                            <div className="d-flex justify-content-between align-items-center w-100">
+                                <div>
+                                    <h4 className="fw-bold mb-1 text-white">Edit Tour Package</h4>
+                                    <small className="text-white-50">Update tour package details</small>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn btn-light rounded-circle"
+                                    onClick={resetAndClose}
+                                    style={{ width: 40, height: 40 }}
+                                >
+                                    <i className="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <form onSubmit={handleSubmit}>
-                            <div className="modal-body">
+                            <div className="modal-body px-4">
+
+                                {errors.general && (
+                                    <div className="alert alert-danger">{errors.general}</div>
+                                )}
+
                                 <div className="row g-3">
 
                                     <div className="col-md-6">
@@ -140,13 +301,22 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
 
                                     <div className="col-md-6">
                                         <label className="form-label">Category</label>
-                                        <input
-                                            type="text"
+                                        <select
                                             name="category"
-                                            className={`form-control ${errors.category ? 'is-invalid' : ''}`}
+                                            className={`form-select ${errors.category ? 'is-invalid' : ''}`}
                                             value={form.category}
                                             onChange={handleChange}
-                                        />
+                                        >
+                                            <option value="">Select Category</option>
+                                            <option value="adventure">Adventure</option>
+                                            <option value="beach">Beach</option>
+                                            <option value="hill-station">Hill Station</option>
+                                            <option value="heritage">Heritage</option>
+                                            <option value="wildlife">Wildlife</option>
+                                            <option value="fort">Fort</option>
+                                            <option value="religious">Religious</option>
+                                            <option value="honeymoon">Honeymoon</option>
+                                        </select>
                                         {errors.category && <div className="invalid-feedback">{errors.category}</div>}
                                     </div>
 
@@ -154,6 +324,7 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                         <label className="form-label">Duration (Days)</label>
                                         <input
                                             type="number"
+                                            min="0"
                                             name="duration_days"
                                             className={`form-control ${errors.duration_days ? 'is-invalid' : ''}`}
                                             value={form.duration_days}
@@ -166,6 +337,7 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                         <label className="form-label">Duration (Nights)</label>
                                         <input
                                             type="number"
+                                            min="0"
                                             name="duration_nights"
                                             className={`form-control ${errors.duration_nights ? 'is-invalid' : ''}`}
                                             value={form.duration_nights}
@@ -178,6 +350,7 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                         <label className="form-label">Base Price</label>
                                         <input
                                             type="number"
+                                            min="0"
                                             step="0.01"
                                             name="base_price"
                                             className={`form-control ${errors.base_price ? 'is-invalid' : ''}`}
@@ -190,7 +363,9 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                     <div className="col-md-6">
                                         <label className="form-label">Discount Price</label>
                                         <input
-                                            type="text"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
                                             name="discount_price"
                                             className={`form-control ${errors.discount_price ? 'is-invalid' : ''}`}
                                             value={form.discount_price}
@@ -203,6 +378,7 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                         <label className="form-label">Min Group Size</label>
                                         <input
                                             type="number"
+                                            min="0"
                                             name="min_group_size"
                                             className={`form-control ${errors.min_group_size ? 'is-invalid' : ''}`}
                                             value={form.min_group_size}
@@ -215,6 +391,7 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                         <label className="form-label">Max Group Size</label>
                                         <input
                                             type="number"
+                                            min="0"
                                             name="max_group_size"
                                             className={`form-control ${errors.max_group_size ? 'is-invalid' : ''}`}
                                             value={form.max_group_size}
@@ -334,13 +511,18 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                                 </div>
                             </div>
 
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-light" onClick={resetAndClose}>
+                            <div className="modal-footer border-0">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={resetAndClose}
+                                    disabled={submitting}
+                                >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="btn btn-attractive"
+                                    className="btn btn-primary px-4"
                                     disabled={submitting}
                                 >
                                     {submitting ? 'Updating...' : 'Update Tour Package'}
@@ -350,7 +532,6 @@ const EditTourpackagesModal = ({ show, onClose, tourpackage, onTourpackageUpdate
                     </div>
                 </div>
             </div>
-            <div className="modal-backdrop fade show"></div>
         </>
     )
 }

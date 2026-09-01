@@ -5,6 +5,6 @@ const controller = require('./Bookingaddons.controller')
 router.get("/bookingaddons/list",controller.list)
 router.get("/bookingaddons/show/:id",controller.show)
 router.post("/bookingaddons/store",controller.store)
-router.put("/bookingaddons/update",controller.updated)
+router.put("/bookingaddons/update/:id",controller.updated)
 router.delete("/bookingaddons/delete/:id",controller.deleted)
 module.exports = router;

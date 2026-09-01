@@ -4,15 +4,15 @@ const BookingtravelersSchema = new mongoose.Schema({
 
     booking_id: {
         type: Number,
-        required: true,
+        
     },
     first_name: {
         type: String,
-        required: true,
+      
     },
     last_name: {
         type: String,
-        required: true,
+       
     },  
     date_of_birth: {
         type: Date,
@@ -20,7 +20,7 @@ const BookingtravelersSchema = new mongoose.Schema({
     },
     passport_number: {
         type: String,
-        required: true,
+      
     },
     passport_expiry: {
         type: Date,
@@ -33,7 +33,7 @@ const BookingtravelersSchema = new mongoose.Schema({
     },
     nationality: {
         type: String,
-        required: true,
+        
     },
     is_primary: {
         type: Boolean,

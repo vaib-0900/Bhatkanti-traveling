@@ -12,14 +12,22 @@ const Dashboard = () => {
     const [packages, setPackages] = useState([])
     const [reviews, setReviews] = useState([])
 
+    // ✅ safely unwrap { data: [...] } vs raw [...] response shapes
+    const extractArray = (res) => {
+        const body = res?.data
+        if (Array.isArray(body)) return body
+        if (Array.isArray(body?.data)) return body.data
+        return []
+    }
+
     const getDashboardData = async () => {
         setLoading(true)
         await Promise.all([
-            http.get('/booking/list').then((res) => setBookings(res.data || [])).catch(() => setBookings([])),
-            http.get('/customer/list').then((res) => setCustomers(res.data || [])).catch(() => setCustomers([])),
-            http.get('/payment/list').then((res) => setPayments(res.data || [])).catch(() => setPayments([])),
-            http.get('/tourpackage/list').then((res) => setPackages(res.data || [])).catch(() => setPackages([])),
-            http.get('/review/list').then((res) => setReviews(res.data || [])).catch(() => setReviews([]))
+            http.get('/bookings/list').then((res) => setBookings(extractArray(res))).catch(() => setBookings([])),
+            http.get('/customers/list').then((res) => setCustomers(extractArray(res))).catch(() => setCustomers([])),
+            http.get('/payments/list').then((res) => setPayments(extractArray(res))).catch(() => setPayments([])),
+            http.get('/tourpackages/list').then((res) => setPackages(extractArray(res))).catch(() => setPackages([])),
+            http.get('/reviews/list').then((res) => setReviews(extractArray(res))).catch(() => setReviews([]))
         ]).finally(() => setLoading(false))
     }
 
@@ -49,12 +57,13 @@ const Dashboard = () => {
     }))
     const maxPaymentStatusCount = Math.max(1, ...paymentStatusCounts.map((s) => s.count))
 
+    // ✅ sort by createdAt (Mongo timestamp) instead of a numeric booking_id that may not exist
     const recentBookings = [...bookings]
-        .sort((a, b) => (b.booking_id || 0) - (a.booking_id || 0))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         .slice(0, 5)
 
     const recentReviews = [...reviews]
-        .sort((a, b) => (b.booking_id || 0) - (a.booking_id || 0))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         .slice(0, 4)
 
     const statusColor = (status) => {
@@ -228,9 +237,10 @@ const Dashboard = () => {
                                             {recentBookings.map((b, key) => (
                                                 <tr key={key}>
                                                     <td>{b.booking_reference}</td>
-                                                    <td>{b.customer_id}</td>
+                                                    {/* ✅ handles populated ref object OR raw id */}
+                                                    <td>{b.customer_id?.name || b.customer_id?.full_name || b.customer_id || '-'}</td>
                                                     <td>{b.number_of_travelers}</td>
-                                                    <td>{b.total_price}</td>
+                                                    <td>{Number(b.total_price || 0).toLocaleString()}</td>
                                                     <td>
                                                         <span
                                                             className="badge text-capitalize"
@@ -276,7 +286,7 @@ const Dashboard = () => {
                 </>
             )}
 
-            <style jsx>{`
+            <style>{`
 .kpi-card {
   position: relative;
   border-radius: 16px;

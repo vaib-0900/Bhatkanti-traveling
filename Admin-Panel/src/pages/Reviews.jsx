@@ -43,7 +43,23 @@ const Reviews = () => {
         setEditreviews(true)
     }
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this reviews?")) {
+      return;
+    }
 
+    try {
+      const res = await http.delete(`/reviews/delete/${id}`);
+
+      console.log("DELETE SUCCESS:", res.data);
+
+      // table refresh
+      getreviews();
+
+    } catch (error) {
+      console.log("DELETE ERROR:", error);
+    }
+  };
     return (
         <>
             {/* Breadcrumb */}
@@ -178,11 +194,7 @@ const Reviews = () => {
                                         {/* Delete Button */}
                                         <button
                                             className="btn btn-sm"
-                                            onClick={() => {
-                                                if (window.confirm('Are you sure you want to delete this item?')) {
-                                                    console.log('Deleted:', data);
-                                                }
-                                            }}
+                                            onClick={() => handleDelete(data._id)}
                                             style={{
                                                 background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                                                 border: 'none',
@@ -233,7 +245,7 @@ const Reviews = () => {
             />
 
 
-            <style jsx>{`
+            <style>{`
 .btn-attractive {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;

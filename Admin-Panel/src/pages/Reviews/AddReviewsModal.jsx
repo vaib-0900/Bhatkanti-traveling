@@ -38,7 +38,7 @@ const AddReviewsModal = ({ show, onClose, onreviewsAdded }) => {
         setSubmitting(true)
         setErrors({})
 
-        await http.post('/review/store', form)
+        await http.post('/reviews/store', form)
             .then(() => {
                 setSubmitting(false)
                 setForm(initialForm)

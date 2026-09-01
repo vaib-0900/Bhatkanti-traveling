@@ -4,7 +4,7 @@ const TourschedulesSchema = new mongoose.Schema({
 
     package_id: {
         type: Number,
-        required: true,
+        
     },
     departure_date: {
         type: Date,
@@ -16,12 +16,12 @@ const TourschedulesSchema = new mongoose.Schema({
     },
     available_seats: {
         type: Number,
-        required: true,
+       
         default: '0',
     },
     total_seats: {
         type: Number,
-        required: true,
+       
         default: '0',
     },
     is_cancelled: {
@@ -30,11 +30,11 @@ const TourschedulesSchema = new mongoose.Schema({
     },
     price_override: {
         type: String,
-        required: true,
+       
     },
     notes: {
         type: String,
-        required: true,
+       
     },
 },
 {

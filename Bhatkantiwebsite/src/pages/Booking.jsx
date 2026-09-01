@@ -1,63 +1,267 @@
-import React, { useState, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Header from '../componant/Header'
 import Footer from '../componant/Footer'
+import AuthUser from '../Auth/AuthUser'
 
-const PACKAGES = [
-  { id: 'sinhagad', name: 'Sinhagad Fort Trek', place: 'Pune, Maharashtra', price: 999, img: 'https://i.pinimg.com/736x/0e/b2/19/0eb219593e7827dd3f17a2a0437de8af.jpg' },
-  { id: 'goa', name: 'Goa Beach Getaway', place: 'Goa', price: 8999, img: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=400&q=80' },
-  { id: 'mahabaleshwar', name: 'Mahabaleshwar Hills Escape', place: 'Satara, Maharashtra', price: 4499, img: 'https://images.unsplash.com/photo-1609766857041-ed402ea8069a?auto=format&fit=crop&w=400&q=80' },
-  { id: 'kerala', name: 'Kerala Backwaters Tour', place: 'Alleppey, Kerala', price: 14999, img: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=400&q=80' },
-  { id: 'rajasthan', name: 'Rajasthan Royal Heritage', place: 'Jaipur, Rajasthan', price: 17999, img: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=400&q=80' },
-  { id: 'ladakh', name: 'Ladakh Bike Expedition', place: 'Leh, Ladakh', price: 24999, img: 'https://images.unsplash.com/photo-1533130061792-64b345e4a833?auto=format&fit=crop&w=400&q=80' },
-]
+const GENDERS = ['male', 'female', 'other']
 
-const ROOM_TYPES = [
-  { id: 'standard', label: 'Standard Room', extra: 0 },
-  { id: 'deluxe', label: 'Deluxe Room', extra: 800 },
-  { id: 'suite', label: 'Premium Suite', extra: 2200 },
+const PAYMENT_METHODS = [
+  { id: 'card', label: 'Credit / Debit Card' },
+  { id: 'upi', label: 'UPI' },
+  { id: 'netbanking', label: 'Net Banking' },
+  { id: 'cash', label: 'Cash (Pay at Office)' },
 ]
 
 const STEPS = ['Trip Details', 'Traveler Info', 'Review & Pay']
 
+// Reads the logged-in customer's id from localStorage. Adjust the keys
+// below to match whatever your customer-auth flow actually stores
+// (e.g. AuthUser's login response). Tries a few common patterns.
+const getCustomerId = () => {
+  try {
+    const direct =
+      localStorage.getItem('customer_id') ||
+      localStorage.getItem('user_id') ||
+      localStorage.getItem('id')
+    if (direct) return direct
+
+    const rawUser = localStorage.getItem('user') || localStorage.getItem('customer')
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser)
+      return parsed?._id || parsed?.id || parsed?.customer_id || null
+    }
+  } catch (e) {
+    console.log('Could not resolve customer id from localStorage', e)
+  }
+  return null
+}
+
+const emptyTraveler = (isPrimary = false) => ({
+  first_name: '',
+  last_name: '',
+  gender: 'male',
+  nationality: '',
+  passport_number: '',
+  passport_expiry: '',
+  is_primary: isPrimary,
+})
+
 const Booking = () => {
+  const { http } = AuthUser()
+
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [bookingResult, setBookingResult] = useState(null)
+
+  // ---- data fetched from backend (same endpoints as the admin panel) ----
+  const [packages, setPackages] = useState([])
+  const [loadingPackages, setLoadingPackages] = useState(true)
+  const [schedules, setSchedules] = useState([])
+
+  const getPackages = async () => {
+    setLoadingPackages(true)
+    await http.get('/tourpackages/list')
+      .then((res) => {
+        // only show packages that are actually bookable
+        const active = (res.data || []).filter(
+          (p) => p.is_active && p.status === 'published'
+        )
+        setPackages(active)
+      })
+      .catch((err) => {
+        console.log(err)
+        console.log('Error fetching tourpackages')
+      })
+      .finally(() => setLoadingPackages(false))
+  }
+
+  // Fetched quietly in the background — no schedule UI is shown. We just
+  // need a valid schedule_id to send with the booking (backend requires it).
+  const getSchedules = async () => {
+    await http.get('/tourschedule/list')
+      .then((res) => setSchedules(res.data || []))
+      .catch((err) => {
+        console.log(err)
+        console.log('Error fetching tourschedule')
+      })
+  }
+
+  useEffect(() => {
+    getPackages()
+    getSchedules()
+  }, [])
 
   const [form, setForm] = useState({
-    packageId: PACKAGES[0].id,
-    checkIn: '',
-    checkOut: '',
-    travelers: 2,
-    roomType: 'standard',
+    packageId: '',
+    numberOfAdults: 1,
+    numberOfChildren: 0,
     name: '',
     email: '',
     phone: '',
     notes: '',
+    paymentMethod: 'card',
+    currency: 'INR',
   })
 
-  const selectedPackage = PACKAGES.find((p) => p.id === form.packageId) || PACKAGES[0]
-  const selectedRoom = ROOM_TYPES.find((r) => r.id === form.roomType) || ROOM_TYPES[0]
+  const [travelers, setTravelers] = useState([emptyTraveler(true)])
+
+  // set default package once packages load
+  useEffect(() => {
+    if (packages.length > 0 && !form.packageId) {
+      setForm((prev) => ({ ...prev, packageId: packages[0]._id }))
+    }
+  }, [packages])
+
+  const selectedPackage = packages.find((p) => p._id === form.packageId) || null
+
+  // auto-pick the first available departure for the selected package —
+  // no UI shown, this is purely to satisfy the backend's required schedule_id
+  const autoSchedule = useMemo(() => {
+    if (!form.packageId) return null
+    return (
+      schedules.find(
+        (s) =>
+          String(s.package_id) === String(form.packageId) &&
+          !s.is_cancelled &&
+          Number(s.available_seats) > 0
+      ) || null
+    )
+  }, [schedules, form.packageId])
+
+  const totalTravelers =
+    Number(form.numberOfAdults || 0) + Number(form.numberOfChildren || 0)
+
+  // keep the travelers array length in sync with adults + children count
+  useEffect(() => {
+    setTravelers((prev) => {
+      const next = [...prev]
+      if (next.length < totalTravelers) {
+        while (next.length < totalTravelers) {
+          next.push(emptyTraveler(next.length === 0))
+        }
+      } else if (next.length > totalTravelers) {
+        next.length = Math.max(totalTravelers, 1)
+      }
+      return next
+    })
+  }, [totalTravelers])
 
   const pricing = useMemo(() => {
-    const base = selectedPackage.price * Number(form.travelers || 1)
-    const roomExtra = selectedRoom.extra * Number(form.travelers || 1)
-    const subtotal = base + roomExtra
+    if (!selectedPackage) return { base: 0, subtotal: 0, taxes: 0, total: 0, discount: 0 }
+
+    const unitPrice = Number(selectedPackage.discount_price || selectedPackage.base_price || 0)
+
+    const listPrice = Number(selectedPackage.base_price || 0)
+    const discountPerPerson = Math.max(listPrice - unitPrice, 0)
+
+    const travelersCount = Math.max(totalTravelers, 1)
+    const base = unitPrice * travelersCount
+    const subtotal = base
     const taxes = Math.round(subtotal * 0.05)
     const total = subtotal + taxes
-    return { base, roomExtra, subtotal, taxes, total }
-  }, [selectedPackage, selectedRoom, form.travelers])
+    const discount = discountPerPerson * travelersCount
+
+    return { base, subtotal, taxes, total, discount }
+  }, [selectedPackage, totalTravelers])
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleTravelerChange = (index, field, value) => {
+    setTravelers((prev) => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
   const back = () => setStep((s) => Math.max(s - 1, 0))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setSubmitted(true)
+    if (!selectedPackage) {
+      setSubmitError('Please choose a tour package.')
+      return
+    }
+
+    const customerId = getCustomerId()
+    if (!customerId) {
+      setSubmitError('You need to be logged in to complete a booking.')
+      return
+    }
+
+    if (!autoSchedule) {
+      setSubmitError('No available departure for this package right now. Please try another package.')
+      return
+    }
+
+    setSubmitting(true)
+    setSubmitError('')
+
+    const bookingPayload = {
+      booking_reference: `BK-${Date.now().toString(36).toUpperCase()}`,
+      customer_id: customerId,
+      schedule_id: autoSchedule._id,
+      number_of_travelers: totalTravelers,
+      number_of_adults: Number(form.numberOfAdults),
+      number_of_children: Number(form.numberOfChildren),
+      total_price: pricing.total,
+      discount_applied: pricing.discount,
+      booking_status: 'pending',
+      payment_status: 'pending',
+      contact_name: form.name,
+      contact_email: form.email,
+      contact_phone: form.phone,
+      special_requests: form.notes,
+    }
+
+    try {
+      const bookingRes = await http.post('/bookings/store', bookingPayload)
+      const bookingId =
+        bookingRes.data?._id || bookingRes.data?.booking?._id || bookingRes.data?.id
+
+      if (!bookingId) {
+        throw new Error('Booking created but no booking id was returned')
+      }
+
+      // create a traveler record for each traveler on this booking
+      await Promise.all(
+        travelers.map((t) =>
+          http.post('/bookingtravelers/store', {
+            ...t,
+            booking_id: bookingId,
+          })
+        )
+      )
+
+      // create the matching payment record for this booking
+      const paymentPayload = {
+        booking_id: bookingId,
+        amount: pricing.total,
+        currency: form.currency,
+        payment_method: form.paymentMethod,
+        transaction_id: '',
+        processed_by: null,
+      }
+
+      const paymentRes = await http.post('/payments/store', paymentPayload)
+
+      setBookingResult({ ...bookingRes.data, _id: bookingId, payment: paymentRes.data })
+      setSubmitted(true)
+    } catch (err) {
+      console.log('BOOKING SUBMIT ERROR:', err)
+      setSubmitError(
+        err?.response?.data?.message ||
+          'Something went wrong while creating your booking. Please try again.'
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -75,7 +279,14 @@ const Booking = () => {
               <h2>Booking Request Received!</h2>
               <p>
                 Thanks {form.name || 'traveler'}, we've received your request for{' '}
-                <strong>{selectedPackage.name}</strong>. Our team will contact you at{' '}
+                <strong>{selectedPackage?.package_name}</strong>
+                {bookingResult?.booking_reference && (
+                  <> (Ref: <strong>{bookingResult.booking_reference}</strong>)</>
+                )}
+                {bookingResult?.payment?.payment_reference && (
+                  <> — Payment Ref: <strong>{bookingResult.payment.payment_reference}</strong></>
+                )}
+                . Our team will contact you at{' '}
                 {form.phone || form.email || 'your provided details'} within 24 hours to confirm your trip.
               </p>
               <a href="/" className="bhk-cta-btn">Back to Home</a>
@@ -149,73 +360,58 @@ const Booking = () => {
                     {step === 0 && (
                       <>
                         <h5 className="bhk-form-title">Choose Your Package</h5>
-                        <div className="mb-3">
-                          <label className="bhk-label">Tour Package</label>
-                          <select
-                            name="packageId"
-                            value={form.packageId}
-                            onChange={handleChange}
-                            className="form-select bhk-input-plain"
-                          >
-                            {PACKAGES.map((p) => (
-                              <option value={p.id} key={p.id}>
-                                {p.name} — {p.place}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="row g-3">
-                          <div className="col-sm-6">
-                            <label className="bhk-label">Check-in Date</label>
-                            <input
-                              type="date"
-                              name="checkIn"
-                              value={form.checkIn}
-                              onChange={handleChange}
-                              className="form-control bhk-input-plain"
-                              required
-                            />
-                          </div>
-                          <div className="col-sm-6">
-                            <label className="bhk-label">Check-out Date</label>
-                            <input
-                              type="date"
-                              name="checkOut"
-                              value={form.checkOut}
-                              onChange={handleChange}
-                              className="form-control bhk-input-plain"
-                              required
-                            />
-                          </div>
-                          <div className="col-sm-6">
-                            <label className="bhk-label">Number of Travelers</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={20}
-                              name="travelers"
-                              value={form.travelers}
-                              onChange={handleChange}
-                              className="form-control bhk-input-plain"
-                              required
-                            />
-                          </div>
-                          <div className="col-sm-6">
-                            <label className="bhk-label">Room Type</label>
-                            <select
-                              name="roomType"
-                              value={form.roomType}
-                              onChange={handleChange}
-                              className="form-select bhk-input-plain"
-                            >
-                              {ROOM_TYPES.map((r) => (
-                                <option value={r.id} key={r.id}>
-                                  {r.label} {r.extra > 0 ? `(+₹${r.extra}/person)` : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+
+                        {loadingPackages ? (
+                          <p className="text-muted">Loading packages...</p>
+                        ) : packages.length === 0 ? (
+                          <p className="text-muted">No packages available right now.</p>
+                        ) : (
+                          <>
+                            <div className="mb-3">
+                              <label className="bhk-label">Tour Package</label>
+                              <select
+                                name="packageId"
+                                value={form.packageId}
+                                onChange={handleChange}
+                                className="form-select bhk-input-plain"
+                              >
+                                {packages.map((p) => (
+                                  <option value={p._id} key={p._id}>
+                                    {p.package_name} — {p.destination}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="row g-3">
+                              <div className="col-sm-6">
+                                <label className="bhk-label">Adults</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={20}
+                                  name="numberOfAdults"
+                                  value={form.numberOfAdults}
+                                  onChange={handleChange}
+                                  className="form-control bhk-input-plain"
+                                  required
+                                />
+                              </div>
+                              <div className="col-sm-6">
+                                <label className="bhk-label">Children</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={20}
+                                  name="numberOfChildren"
+                                  value={form.numberOfChildren}
+                                  onChange={handleChange}
+                                  className="form-control bhk-input-plain"
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
 
@@ -223,9 +419,10 @@ const Booking = () => {
                     {step === 1 && (
                       <>
                         <h5 className="bhk-form-title">Traveler Information</h5>
-                        <div className="row g-3">
+
+                        <div className="row g-3 mb-4">
                           <div className="col-sm-6">
-                            <label className="bhk-label">Full Name</label>
+                            <label className="bhk-label">Contact Name</label>
                             <input
                               type="text"
                               name="name"
@@ -260,17 +457,87 @@ const Booking = () => {
                               required
                             />
                           </div>
-                          <div className="col-12">
-                            <label className="bhk-label">Special Requests (optional)</label>
-                            <textarea
-                              name="notes"
-                              value={form.notes}
-                              onChange={handleChange}
-                              rows={4}
-                              placeholder="Dietary needs, accessibility, celebration occasions..."
-                              className="form-control bhk-input-plain"
-                            />
+                        </div>
+
+                        {travelers.map((t, i) => (
+                          <div key={i} className="bhk-traveler-block">
+                            <h6 className="bhk-traveler-title">
+                              Traveler {i + 1} {t.is_primary ? '(Primary)' : ''}
+                            </h6>
+                            <div className="row g-3">
+                              <div className="col-sm-6">
+                                <label className="bhk-label">First Name</label>
+                                <input
+                                  type="text"
+                                  className="form-control bhk-input-plain"
+                                  value={t.first_name}
+                                  onChange={(e) => handleTravelerChange(i, 'first_name', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-sm-6">
+                                <label className="bhk-label">Last Name</label>
+                                <input
+                                  type="text"
+                                  className="form-control bhk-input-plain"
+                                  value={t.last_name}
+                                  onChange={(e) => handleTravelerChange(i, 'last_name', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-sm-4">
+                                <label className="bhk-label">Gender</label>
+                                <select
+                                  className="form-select bhk-input-plain"
+                                  value={t.gender}
+                                  onChange={(e) => handleTravelerChange(i, 'gender', e.target.value)}
+                                >
+                                  {GENDERS.map((g) => (
+                                    <option value={g} key={g} className="text-capitalize">{g}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-sm-4">
+                                <label className="bhk-label">Nationality</label>
+                                <input
+                                  type="text"
+                                  className="form-control bhk-input-plain"
+                                  value={t.nationality}
+                                  onChange={(e) => handleTravelerChange(i, 'nationality', e.target.value)}
+                                />
+                              </div>
+                              <div className="col-sm-4">
+                                <label className="bhk-label">Passport Number</label>
+                                <input
+                                  type="text"
+                                  className="form-control bhk-input-plain"
+                                  value={t.passport_number}
+                                  onChange={(e) => handleTravelerChange(i, 'passport_number', e.target.value)}
+                                />
+                              </div>
+                              <div className="col-sm-6">
+                                <label className="bhk-label">Passport Expiry</label>
+                                <input
+                                  type="date"
+                                  className="form-control bhk-input-plain"
+                                  value={t.passport_expiry}
+                                  onChange={(e) => handleTravelerChange(i, 'passport_expiry', e.target.value)}
+                                />
+                              </div>
+                            </div>
                           </div>
+                        ))}
+
+                        <div className="mb-3">
+                          <label className="bhk-label">Special Requests (optional)</label>
+                          <textarea
+                            name="notes"
+                            value={form.notes}
+                            onChange={handleChange}
+                            rows={3}
+                            placeholder="Dietary needs, accessibility, celebration occasions..."
+                            className="form-control bhk-input-plain"
+                          />
                         </div>
                       </>
                     )}
@@ -280,16 +547,48 @@ const Booking = () => {
                       <>
                         <h5 className="bhk-form-title">Review Your Booking</h5>
                         <ul className="bhk-review-list">
-                          <li><span>Package</span><strong>{selectedPackage.name}</strong></li>
-                          <li><span>Destination</span><strong>{selectedPackage.place}</strong></li>
-                          <li><span>Check-in</span><strong>{form.checkIn || '—'}</strong></li>
-                          <li><span>Check-out</span><strong>{form.checkOut || '—'}</strong></li>
-                          <li><span>Travelers</span><strong>{form.travelers}</strong></li>
-                          <li><span>Room Type</span><strong>{selectedRoom.label}</strong></li>
-                          <li><span>Name</span><strong>{form.name || '—'}</strong></li>
+                          <li><span>Package</span><strong>{selectedPackage?.package_name || '—'}</strong></li>
+                          <li><span>Destination</span><strong>{selectedPackage?.destination || '—'}</strong></li>
+                          <li><span>Travelers</span><strong>{form.numberOfAdults}A / {form.numberOfChildren}C</strong></li>
+                          <li><span>Contact</span><strong>{form.name || '—'}</strong></li>
                           <li><span>Email</span><strong>{form.email || '—'}</strong></li>
                           <li><span>Phone</span><strong>{form.phone || '—'}</strong></li>
                         </ul>
+
+                        <div className="row g-3 mb-3">
+                          <div className="col-sm-7">
+                            <label className="bhk-label">Payment Method</label>
+                            <select
+                              name="paymentMethod"
+                              value={form.paymentMethod}
+                              onChange={handleChange}
+                              className="form-select bhk-input-plain"
+                            >
+                              {PAYMENT_METHODS.map((m) => (
+                                <option value={m.id} key={m.id}>{m.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-sm-5">
+                            <label className="bhk-label">Currency</label>
+                            <select
+                              name="currency"
+                              value={form.currency}
+                              onChange={handleChange}
+                              className="form-select bhk-input-plain"
+                            >
+                              <option value="INR">INR (₹)</option>
+                              <option value="USD">USD ($)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {submitError && (
+                          <div className="alert alert-danger py-2 px-3" style={{ fontSize: '0.85rem' }}>
+                            {submitError}
+                          </div>
+                        )}
+
                         <div className="bhk-payment-note">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1f4d3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -303,18 +602,23 @@ const Booking = () => {
                     {/* Step controls */}
                     <div className="bhk-step-actions">
                       {step > 0 && (
-                        <button type="button" onClick={back} className="bhk-btn-outline">
+                        <button type="button" onClick={back} className="bhk-btn-outline" disabled={submitting}>
                           Back
                         </button>
                       )}
                       {step < STEPS.length - 1 && (
-                        <button type="button" onClick={next} className="bhk-btn-solid ms-auto">
+                        <button
+                          type="button"
+                          onClick={next}
+                          className="bhk-btn-solid ms-auto"
+                          disabled={step === 0 && !form.packageId}
+                        >
                           Continue
                         </button>
                       )}
                       {step === STEPS.length - 1 && (
-                        <button type="submit" className="bhk-btn-solid ms-auto">
-                          Confirm Booking
+                        <button type="submit" className="bhk-btn-solid ms-auto" disabled={submitting}>
+                          {submitting ? 'Submitting...' : 'Confirm Booking'}
                         </button>
                       )}
                     </div>
@@ -324,25 +628,33 @@ const Booking = () => {
                 {/* Summary sidebar */}
                 <div className="col-lg-4">
                   <div className="bhk-summary-card">
-                    <img src={selectedPackage.img} alt={selectedPackage.name} className="bhk-summary-img" />
+                    {selectedPackage?.featured_image && (
+                      <img
+                        src={`http://localhost:3000/media/${selectedPackage.featured_image}`}
+                        alt={selectedPackage.package_name}
+                        className="bhk-summary-img"
+                      />
+                    )}
                     <div className="bhk-summary-body">
-                      <h6>{selectedPackage.name}</h6>
-                      <p className="bhk-summary-place">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5581f" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        {selectedPackage.place}
-                      </p>
+                      <h6>{selectedPackage?.package_name || 'Select a package'}</h6>
+                      {selectedPackage && (
+                        <p className="bhk-summary-place">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5581f" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          {selectedPackage.destination}
+                        </p>
+                      )}
 
                       <div className="bhk-summary-row">
-                        <span>Base price × {form.travelers || 1}</span>
+                        <span>Base price × {totalTravelers || 1}</span>
                         <span>₹{pricing.base.toLocaleString('en-IN')}</span>
                       </div>
-                      {pricing.roomExtra > 0 && (
+                      {pricing.discount > 0 && (
                         <div className="bhk-summary-row">
-                          <span>Room upgrade</span>
-                          <span>₹{pricing.roomExtra.toLocaleString('en-IN')}</span>
+                          <span>Discount</span>
+                          <span>−₹{pricing.discount.toLocaleString('en-IN')}</span>
                         </div>
                       )}
                       <div className="bhk-summary-row">
@@ -384,7 +696,6 @@ const Booking = () => {
         .bhk-banner-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
         .bhk-banner-overlay {
           position: absolute; inset: 0;
-         
           z-index: 0;
         }
         .bhk-book-banner .container { z-index: 1; }
@@ -441,6 +752,14 @@ const Booking = () => {
           box-shadow: 0 0 0 3px rgba(31,77,61,0.1) !important;
         }
 
+        .bhk-traveler-block {
+          border: 1px dashed #e5e7eb;
+          border-radius: 10px;
+          padding: 1rem;
+          margin-bottom: 1rem;
+        }
+        .bhk-traveler-title { font-weight: 700; font-size: 0.88rem; color: #1f4d3d; margin-bottom: 0.75rem; }
+
         .bhk-review-list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
         .bhk-review-list li {
           display: flex;
@@ -488,6 +807,7 @@ const Booking = () => {
           transition: background 0.2s ease;
         }
         .bhk-btn-solid:hover { background: #173a2e; }
+        .bhk-btn-solid:disabled, .bhk-btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* Summary sidebar */
         .bhk-summary-card {

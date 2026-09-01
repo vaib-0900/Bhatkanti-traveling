@@ -38,20 +38,15 @@
               <div className="modal-body">
                 <div className="d-flex flex-column align-items-center mb-4">
                   <img
-                    src={
-                      user.profile_image
-                        ? user.profile_image
-                        : 'https://via.placeholder.com/100?text=No+Image'
-                    }
-                    alt={user.full_name}
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      objectFit: 'cover',
-                      borderRadius: '50%',
-                      border: '2px solid #eee',
-                    }}
-                  />
+                        src={`http://localhost:3000/media/${user.profile_image}`}
+                        alt={user.username}
+                        width="50"
+                        height="50"
+                        style={{
+                          objectFit: "cover",
+                          borderRadius: "50%"
+                        }}
+                      />
                   <h5 className="mt-3 mb-0">{user.full_name}</h5>
                   <span className="badge bg-success mt-1">
                     {user.isactive ? 'Active' : 'Inactive'}

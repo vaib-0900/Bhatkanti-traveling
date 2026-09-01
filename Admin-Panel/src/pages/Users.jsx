@@ -5,25 +5,31 @@ import ViewUserModal from './users/ViewUserModal'
 import EditUserModal from './users/EditUserModel'
 
 const Users = () => {
-  const [Users, setusers] = useState([])
-  const { http } = AuthUser()
+  const [Users, setusers] = useState([]);
+  const [isRefresh, setIsRefresh] = useState(0);
+
+  const { http } = AuthUser();
+
   const getusers = async () => {
-    await http.get("/user/list")
-      .then((res) => {
-        setusers(res.data)
-      }).catch((err) => {
-        console.log(err)
-        console.log("Error in Managers")
-      })
-  }
+    try {
+      const res = await http.get("/user/list");
+
+      console.log("USER LIST:", res.data);
+
+      setusers(res.data);
+    } catch (err) {
+      console.log("LIST ERROR:", err);
+    }
+  };
+
   useEffect(() => {
-    getusers()
-  }, [])
+    getusers();
+  }, [isRefresh]);
 
 
-  const [Adduser, setAdduser] = useState(false)
-  const Addmodel = () => {
-    setAdduser(true)
+  const [showModal, setShowModal] = useState(false)
+  const closeAddModal = () => {
+    setShowModal(false)
   }
 
   const [Viewuser, setViewuser] = useState(false)
@@ -40,6 +46,25 @@ const Users = () => {
     setEdituser(true)
   }
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+
+    try {
+      const res = await http.delete(`/user/delete/${id}`);
+
+      console.log("DELETE SUCCESS:", res.data);
+
+      // table refresh
+      getusers();
+
+    } catch (error) {
+      console.log("DELETE ERROR:", error);
+    }
+  };
+
+
 
   return (
     <>
@@ -55,7 +80,7 @@ const Users = () => {
       {/* Title */}
       <div className="d-flex justify-content-between align-items-center mb-4">
 
-        <button className="btn btn-attractive" onClick={Addmodel}>
+        <button className="btn btn-attractive" onClick={setShowModal}>
           <i className="fas fa-user-plus me-2"></i>
           Add Users
         </button>
@@ -109,7 +134,22 @@ const Users = () => {
                   <td>{data.email}</td>
                   <td>{data.full_name}</td>
                   <td>{data.role}</td>
-                  <td>{data.profile_image}</td>
+                  <td>
+                    {data.profile_image ? (
+                      <img
+                        src={`http://localhost:3000/media/${data.profile_image}`}
+                        alt={data.username}
+                        width="50"
+                        height="50"
+                        style={{
+                          objectFit: "cover",
+                          borderRadius: "50%"
+                        }}
+                      />
+                    ) : (
+                      "No Image"
+                    )}
+                  </td>
                   <td>{data.last_login}</td>
 
                   <td>
@@ -171,11 +211,7 @@ const Users = () => {
                     {/* Delete Button */}
                     <button
                       className="btn btn-sm"
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this item?')) {
-                          console.log('Deleted:', data);
-                        }
-                      }}
+                      onClick={() => handleDelete(data._id)}
                       style={{
                         background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                         border: 'none',
@@ -186,15 +222,18 @@ const Users = () => {
                         boxShadow: '0 4px 15px rgba(245, 87, 108, 0.3)'
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.transform = 'translateY(-2px)';
-                        e.target.style.boxShadow = '0 6px 25px rgba(245, 87, 108, 0.5)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow =
+                          '0 6px 25px rgba(245, 87, 108, 0.5)';
                       }}
                       onMouseLeave={(e) => {
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = '0 4px 15px rgba(245, 87, 108, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow =
+                          '0 4px 15px rgba(245, 87, 108, 0.3)';
                       }}
                     >
-                      <i className="fa fa-trash me-1"></i> Delete
+                      <i className="fa fa-trash me-1"></i>
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -204,13 +243,15 @@ const Users = () => {
         </div>
       </div>
 
-      {/* Add User Modal */}
-      <AddUserModal
-        show={Adduser}
-        onClose={() => setAdduser(false)}
-        onUserAdded={() => getusers()}
-      />
 
+      {/* AddUser Model */}
+      <AddUserModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        closeAddModal={() => setShowModal(false)}
+        isRefresh={isRefresh}
+        setIsRefresh={setIsRefresh}
+      />
       {/* View User Modal */}
       <ViewUserModal
         show={Viewuser}
@@ -226,7 +267,7 @@ const Users = () => {
         onUserUpdated={() => getusers()}
       />
 
-      <style jsx>{`
+      <style>{`
 .btn-attractive {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
