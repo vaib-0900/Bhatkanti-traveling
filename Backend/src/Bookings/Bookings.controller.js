@@ -1,93 +1,117 @@
-const BookingsModel = require("./Bookings.model")
+const BookingsModel = require("./Bookings.model");
 
+const list = async (req,res) =>{
+    try {
+     const data = await BookingsModel.find()
+     return res.json(data)
 
-const list = async (req, res) => {
-     try {
-          const data = await BookingsModel.find()
-          return res.json(data)
-
-     } catch (error) {
-          console.log(error)
-          return res.json('internal server error..')
-     }
-}
-const store = async (req, res) => {
-     try {
-          const {
-               booking_reference,
-               customer_id,
-               schedule_id,
-               number_of_travelers,
-               number_of_adults,
-               number_of_children,
-               total_price,
-               discount_applied,
-               booking_status,
-               payment_status,
-               special_requests,
-               cancellation_reason
-          } = req.body
-
-          const save = await BookingsModel.create({
-                 booking_reference,
-               customer_id,
-               schedule_id,
-               number_of_travelers,
-               number_of_adults,
-               number_of_children,
-               total_price,
-               discount_applied,
-               booking_status,
-               payment_status,
-               special_requests,
-               cancellation_reason
-          })
-          if (!save) {
-               return res.json({
-                    message: "somthing went wrong",
-               })
-          }
-
-          return res.json(
-               {
-                    booking_reference,
-                    customer_id,
-                    schedule_id,
-                    number_of_travelers,
-                    number_of_adults,
-                    number_of_children,
-                    total_price,
-                    discount_applied,
-                    booking_status,
-                    payment_status,
-                    special_requests,
-                    cancellation_reason
-               }
-          )
-     } catch (error) {
-          console.log(error)
-          return res.status(500).json({
-               message: "stored error"
-          })
-
-     }
-     return res.json("i am store function");
-}
-const show = async (req,res) =>{
-     try {
-        const {id} =req.params 
-        const data = await BookingsModel.findById({_id:id})
-        return res.json(id) 
-     }  catch (error) {
+    } catch (error) {
      console.log(error)
      return res.json('internal server error..')
     }   
 }
-const deleted = async (req, res) => {
+
+
+const store = async (req, res) => {
+  try {
+    console.log("BOOKING BODY:", req.body);
+
+    const {
+      booking_reference,
+      customer_id,
+      schedule_id,
+      number_of_travelers,
+      number_of_adults,
+      number_of_children,
+      total_price,
+      discount_applied,
+      booking_status,
+      payment_status,
+      special_requests,
+      cancellation_reason,
+    } = req.body;
+
+    if (!customer_id || !String(customer_id).trim()) {
+      return res.status(400).json({
+        message: "Customer ID is required",
+      });
+    }
+
+    if (!schedule_id || !String(schedule_id).trim()) {
+      return res.status(400).json({
+        message: "Schedule ID is required",
+      });
+    }
+
+    const save = await BookingsModel.create({
+      booking_reference,
+      customer_id: String(customer_id),
+      schedule_id: String(schedule_id),
+      number_of_travelers,
+      number_of_adults,
+      number_of_children,
+      total_price:
+        total_price !== undefined ? String(total_price) : undefined,
+      discount_applied:
+        discount_applied !== undefined
+          ? String(discount_applied)
+          : undefined,
+      booking_status: booking_status || "pending",
+      payment_status: payment_status || "pending",
+      special_requests,
+      cancellation_reason,
+    });
+
+    return res.status(201).json({
+      message: "Booking created successfully",
+      data: save,
+    });
+  } catch (error) {
+    console.error("BOOKING STORE ERROR:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Booking validation failed",
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Booking store error",
+      error: error.message,
+    });
+  }
+};
+
+
+const show = async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log("DELETE ID:", id);
+    const data = await BookingsModel.findById(id);
+
+    if (!data) {
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+    }
+
+    return res.status(200).json(data);
+
+  } catch (error) {
+    console.log("BOOKING SHOW ERROR:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+const deleted = async (req, res) => {
+  try {
+    const { id } = req.params;
 
     if (!id) {
       return res.status(400).json({
@@ -95,15 +119,14 @@ const deleted = async (req, res) => {
       });
     }
 
-    const booking = await BookingsModel.findById(id);
+    const deletedBooking =
+      await BookingsModel.findByIdAndDelete(id);
 
-    if (!booking) {
+    if (!deletedBooking) {
       return res.status(404).json({
         message: "Booking not found",
       });
     }
-
-    await BookingsModel.findByIdAndDelete(id);
 
     return res.status(200).json({
       message: "Booking deleted successfully",
@@ -118,6 +141,8 @@ const deleted = async (req, res) => {
     });
   }
 };
+
+
 const updated = async (req, res) => {
   try {
     console.log("UPDATE BODY:", req.body);
@@ -164,7 +189,6 @@ const updated = async (req, res) => {
       message: "Booking updated successfully",
       data: data,
     });
-
   } catch (error) {
     console.log("BOOKING UPDATE ERROR:", error);
 
@@ -175,10 +199,11 @@ const updated = async (req, res) => {
   }
 };
 
+
 module.exports = {
-     list,
-     store,
-     show,
-     deleted,
-     updated
+  list,
+  store,
+  show,
+  deleted,
+  updated,
 };

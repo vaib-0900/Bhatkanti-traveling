@@ -1,690 +1,2143 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import Header from '../componant/Header'
-import Footer from '../componant/Footer'
-import AuthUser from '../Auth/AuthUser'
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-const GENDERS = ['male', 'female', 'other']
+import Header from "../componant/Header";
+import Footer from "../componant/Footer";
+import AuthUser from "../Auth/AuthUser";
+
+const GENDERS = [
+  "male",
+  "female",
+  "other",
+];
 
 const PAYMENT_METHODS = [
-  { id: 'card', label: 'Credit / Debit Card' },
-  { id: 'upi', label: 'UPI' },
-  { id: 'netbanking', label: 'Net Banking' },
-  { id: 'cash', label: 'Cash (Pay at Office)' },
-]
+  {
+    id: "card",
+    label: "Credit / Debit Card",
+  },
+  {
+    id: "upi",
+    label: "UPI",
+  },
+  {
+    id: "netbanking",
+    label: "Net Banking",
+  },
+  {
+    id: "cash",
+    label: "Cash (Pay at Office)",
+  },
+];
 
-const STEPS = ['Trip Details', 'Traveler Info', 'Review & Pay']
-
-// Reads the logged-in customer's id from localStorage. Adjust the keys
-// below to match whatever your customer-auth flow actually stores
-// (e.g. AuthUser's login response). Tries a few common patterns.
-const getCustomerId = () => {
-  try {
-    const direct =
-      localStorage.getItem('customer_id') ||
-      localStorage.getItem('user_id') ||
-      localStorage.getItem('id')
-    if (direct) return direct
-
-    const rawUser = localStorage.getItem('user') || localStorage.getItem('customer')
-    if (rawUser) {
-      const parsed = JSON.parse(rawUser)
-      return parsed?._id || parsed?.id || parsed?.customer_id || null
-    }
-  } catch (e) {
-    console.log('Could not resolve customer id from localStorage', e)
-  }
-  return null
-}
+const STEPS = [
+  "Trip Details",
+  "Traveler Info",
+  "Review & Pay",
+];
 
 const emptyTraveler = (isPrimary = false) => ({
-  first_name: '',
-  last_name: '',
-  gender: 'male',
-  nationality: '',
-  passport_number: '',
-  passport_expiry: '',
+  first_name: "",
+  last_name: "",
+  gender: "male",
+  nationality: "",
+  passport_number: "",
+  passport_expiry: "",
   is_primary: isPrimary,
-})
+});
+
+/* =========================================================
+   CUSTOMER ID
+========================================================= */
+
+const getCustomerId = () => {
+  try {
+    const directCustomerId =
+      localStorage.getItem("customer_id") ||
+      localStorage.getItem("user_id") ||
+      localStorage.getItem("id");
+
+    if (directCustomerId) {
+      return directCustomerId;
+    }
+
+    const rawUser =
+      localStorage.getItem("user") ||
+      localStorage.getItem("customer");
+
+    if (rawUser) {
+      const parsedUser = JSON.parse(rawUser);
+
+      return (
+        parsedUser?._id ||
+        parsedUser?.id ||
+        parsedUser?.customer_id ||
+        null
+      );
+    }
+  } catch (error) {
+    console.error(
+      "CUSTOMER ID ERROR:",
+      error
+    );
+  }
+
+  return null;
+};
+
+/* =========================================================
+   DATE FORMAT
+========================================================= */
+
+const formatDate = (date) => {
+  if (!date) {
+    return "-";
+  }
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "-";
+  }
+
+  return parsed.toLocaleDateString(
+    "en-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
+};
+
+/* =========================================================
+   BOOKING COMPONENT
+========================================================= */
 
 const Booking = () => {
-  const { http } = AuthUser()
+  const { http } = AuthUser();
 
-  const [step, setStep] = useState(0)
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
-  const [bookingResult, setBookingResult] = useState(null)
+  /* =======================================================
+     STATES
+  ======================================================= */
 
-  // ---- data fetched from backend (same endpoints as the admin panel) ----
-  const [packages, setPackages] = useState([])
-  const [loadingPackages, setLoadingPackages] = useState(true)
-  const [schedules, setSchedules] = useState([])
+  const [step, setStep] = useState(0);
 
-  const getPackages = async () => {
-    setLoadingPackages(true)
-    await http.get('/tourpackages/list')
-      .then((res) => {
-        // only show packages that are actually bookable
-        const active = (res.data || []).filter(
-          (p) => p.is_active && p.status === 'published'
-        )
-        setPackages(active)
-      })
-      .catch((err) => {
-        console.log(err)
-        console.log('Error fetching tourpackages')
-      })
-      .finally(() => setLoadingPackages(false))
-  }
+  const [packages, setPackages] = useState([]);
+  const [schedules, setSchedules] = useState([]);
 
-  // Fetched quietly in the background — no schedule UI is shown. We just
-  // need a valid schedule_id to send with the booking (backend requires it).
-  const getSchedules = async () => {
-    await http.get('/tourschedule/list')
-      .then((res) => setSchedules(res.data || []))
-      .catch((err) => {
-        console.log(err)
-        console.log('Error fetching tourschedule')
-      })
-  }
+  const [loadingPackages, setLoadingPackages] =
+    useState(true);
 
-  useEffect(() => {
-    getPackages()
-    getSchedules()
-  }, [])
+  const [loadingSchedules, setLoadingSchedules] =
+    useState(false);
+
+  const [submitted, setSubmitted] =
+    useState(false);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [submitError, setSubmitError] =
+    useState("");
+
+  const [bookingResult, setBookingResult] =
+    useState(null);
 
   const [form, setForm] = useState({
-    packageId: '',
+    packageId: "",
+    scheduleId: "",
     numberOfAdults: 1,
     numberOfChildren: 0,
-    name: '',
-    email: '',
-    phone: '',
-    notes: '',
-    paymentMethod: 'card',
-    currency: 'INR',
-  })
+    name: "",
+    email: "",
+    phone: "",
+    notes: "",
+    paymentMethod: "card",
+    currency: "INR",
+  });
 
-  const [travelers, setTravelers] = useState([emptyTraveler(true)])
+  const [travelers, setTravelers] =
+    useState([
+      emptyTraveler(true),
+    ]);
 
-  // set default package once packages load
-  useEffect(() => {
-    if (packages.length > 0 && !form.packageId) {
-      setForm((prev) => ({ ...prev, packageId: packages[0]._id }))
+  /* =======================================================
+     GET PACKAGES
+  ======================================================= */
+
+  const getPackages = async () => {
+    try {
+      setLoadingPackages(true);
+
+      const res = await http.get(
+        "/tourpackages/list"
+      );
+
+      const packageList =
+        Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      console.log(
+        "PACKAGES:",
+        packageList
+      );
+
+      const activePackages =
+        packageList.filter(
+          (item) =>
+            item.is_active === true &&
+            item.status === "published"
+        );
+
+      setPackages(activePackages);
+    } catch (error) {
+      console.error(
+        "GET PACKAGES ERROR:",
+        error
+      );
+
+      setPackages([]);
+    } finally {
+      setLoadingPackages(false);
     }
-  }, [packages])
+  };
 
-  const selectedPackage = packages.find((p) => p._id === form.packageId) || null
+  /* =======================================================
+     GET SCHEDULES
+  ======================================================= */
 
-  // auto-pick the first available departure for the selected package —
-  // no UI shown, this is purely to satisfy the backend's required schedule_id
-  const autoSchedule = useMemo(() => {
-    if (!form.packageId) return null
+  const getSchedules = async () => {
+    try {
+      setLoadingSchedules(true);
+
+      const res = await http.get(
+        "/tourschedule/list"
+      );
+
+      const scheduleList =
+        Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      console.log(
+        "ALL SCHEDULES:",
+        scheduleList
+      );
+
+      setSchedules(scheduleList);
+    } catch (error) {
+      console.error(
+        "GET SCHEDULES ERROR:",
+        error
+      );
+
+      setSchedules([]);
+    } finally {
+      setLoadingSchedules(false);
+    }
+  };
+
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
+
+  useEffect(() => {
+    getPackages();
+    getSchedules();
+  }, []);
+
+  /* =======================================================
+     SELECTED PACKAGE
+  ======================================================= */
+
+  const selectedPackage = useMemo(() => {
+    if (!form.packageId) {
+      return null;
+    }
+
     return (
-      schedules.find(
-        (s) =>
-          String(s.package_id) === String(form.packageId) &&
-          !s.is_cancelled &&
-          Number(s.available_seats) > 0
+      packages.find(
+        (item) =>
+          String(item._id) ===
+          String(form.packageId)
       ) || null
-    )
-  }, [schedules, form.packageId])
+    );
+  }, [
+    packages,
+    form.packageId,
+  ]);
+
+  /* =======================================================
+     AVAILABLE SCHEDULES
+
+     PACKAGE ID MATCH:
+     
+     Tourpackages._id
+              ↓
+     Tourschedules.package_id
+
+     package_id is String.
+     
+     NO AUTO DEPARTURE
+  ======================================================= */
+
+  const availableSchedules = useMemo(() => {
+    if (!form.packageId) {
+      return [];
+    }
+
+    console.log(
+      "SELECTED PACKAGE ID:",
+      form.packageId
+    );
+
+    const filtered =
+      schedules.filter((schedule) => {
+        /*
+         * package_id String असल्यामुळे
+         * String() वापरून comparison
+         */
+        const schedulePackageId =
+          typeof schedule.package_id ===
+            "object"
+            ? schedule.package_id?._id
+            : schedule.package_id;
+
+        const packageMatch =
+          String(schedulePackageId) ===
+          String(form.packageId);
+
+        const notCancelled =
+          schedule.is_cancelled !== true;
+
+        const seatsAvailable =
+          Number(
+            schedule.available_seats || 0
+          ) > 0;
+
+        console.log(
+          "SCHEDULE CHECK:",
+          {
+            scheduleId:
+              schedule._id,
+
+            schedulePackageId:
+              schedulePackageId,
+
+            selectedPackageId:
+              form.packageId,
+
+            packageMatch:
+              packageMatch,
+
+            notCancelled:
+              notCancelled,
+
+            seatsAvailable:
+              seatsAvailable,
+          }
+        );
+
+        return (
+          packageMatch &&
+          notCancelled &&
+          seatsAvailable
+        );
+      });
+
+    return filtered.sort(
+      (a, b) =>
+        new Date(
+          a.departure_date
+        ) -
+        new Date(
+          b.departure_date
+        )
+    );
+  }, [
+    schedules,
+    form.packageId,
+  ]);
+
+  /* =======================================================
+     SELECTED SCHEDULE
+  ======================================================= */
+
+  const selectedSchedule = useMemo(() => {
+    if (!form.scheduleId) {
+      return null;
+    }
+
+    return (
+      availableSchedules.find(
+        (schedule) =>
+          String(schedule._id) ===
+          String(form.scheduleId)
+      ) || null
+    );
+  }, [
+    availableSchedules,
+    form.scheduleId,
+  ]);
+
+  /* =======================================================
+     TOTAL TRAVELERS
+  ======================================================= */
 
   const totalTravelers =
-    Number(form.numberOfAdults || 0) + Number(form.numberOfChildren || 0)
+    Number(
+      form.numberOfAdults || 0
+    ) +
+    Number(
+      form.numberOfChildren || 0
+    );
 
-  // keep the travelers array length in sync with adults + children count
+  /* =======================================================
+     SYNC TRAVELERS
+  ======================================================= */
+
   useEffect(() => {
-    setTravelers((prev) => {
-      const next = [...prev]
-      if (next.length < totalTravelers) {
-        while (next.length < totalTravelers) {
-          next.push(emptyTraveler(next.length === 0))
-        }
-      } else if (next.length > totalTravelers) {
-        next.length = Math.max(totalTravelers, 1)
+    setTravelers((previous) => {
+      const next = [...previous];
+
+      while (
+        next.length < totalTravelers
+      ) {
+        next.push(
+          emptyTraveler(
+            next.length === 0
+          )
+        );
       }
-      return next
-    })
-  }, [totalTravelers])
+
+      if (
+        next.length >
+        totalTravelers
+      ) {
+        next.length = Math.max(
+          totalTravelers,
+          1
+        );
+      }
+
+      next.forEach(
+        (traveler, index) => {
+          traveler.is_primary =
+            index === 0;
+        }
+      );
+
+      return next;
+    });
+  }, [totalTravelers]);
+
+  /* =======================================================
+     PRICING
+  ======================================================= */
 
   const pricing = useMemo(() => {
-    if (!selectedPackage) return { base: 0, subtotal: 0, taxes: 0, total: 0, discount: 0 }
+    if (!selectedPackage) {
+      return {
+        listPrice: 0,
+        base: 0,
+        discount: 0,
+        subtotal: 0,
+        taxes: 0,
+        total: 0,
+      };
+    }
 
-    const unitPrice = Number(selectedPackage.discount_price || selectedPackage.base_price || 0)
+    const listPrice =
+      Number(
+        selectedPackage.base_price || 0
+      );
 
-    const listPrice = Number(selectedPackage.base_price || 0)
-    const discountPerPerson = Math.max(listPrice - unitPrice, 0)
+    const salePrice =
+      Number(
+        selectedPackage.discount_price ||
+        selectedPackage.base_price ||
+        0
+      );
 
-    const travelersCount = Math.max(totalTravelers, 1)
-    const base = unitPrice * travelersCount
-    const subtotal = base
-    const taxes = Math.round(subtotal * 0.05)
-    const total = subtotal + taxes
-    const discount = discountPerPerson * travelersCount
+    const travelerCount =
+      Math.max(
+        totalTravelers,
+        1
+      );
 
-    return { base, subtotal, taxes, total, discount }
-  }, [selectedPackage, totalTravelers])
+    const listBase =
+      listPrice *
+      travelerCount;
+
+    const saleBase =
+      salePrice *
+      travelerCount;
+
+    const discount =
+      Math.max(
+        listBase - saleBase,
+        0
+      );
+
+    const subtotal =
+      saleBase;
+
+    const taxes =
+      Math.round(
+        subtotal * 0.05
+      );
+
+    const total =
+      subtotal + taxes;
+
+    return {
+      listPrice,
+      base: saleBase,
+      discount,
+      subtotal,
+      taxes,
+      total,
+    };
+  }, [
+    selectedPackage,
+    totalTravelers,
+  ]);
+
+  /* =======================================================
+     FORM CHANGE
+  ======================================================= */
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-  }
+    const {
+      name,
+      value,
+    } = e.target;
 
-  const handleTravelerChange = (index, field, value) => {
-    setTravelers((prev) => {
-      const next = [...prev]
-      next[index] = { ...next[index], [field]: value }
-      return next
-    })
-  }
+    if (
+      name ===
+      "numberOfAdults" ||
+      name ===
+      "numberOfChildren"
+    ) {
+      setForm(
+        (previous) => ({
+          ...previous,
+          [name]:
+            Number(value),
+        })
+      );
+    } else {
+      setForm(
+        (previous) => ({
+          ...previous,
+          [name]: value,
+        })
+      );
+    }
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
-  const back = () => setStep((s) => Math.max(s - 1, 0))
+    setSubmitError("");
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  /* =======================================================
+     PACKAGE CHANGE
+
+     IMPORTANT:
+     SCHEDULE WILL NOT AUTO SELECT
+  ======================================================= */
+
+  const handlePackageChange = (
+    e
+  ) => {
+    const packageId =
+      e.target.value;
+
+    setForm(
+      (previous) => ({
+        ...previous,
+
+        packageId,
+
+        /*
+         * Package change झाल्यावर
+         * previous departure remove
+         */
+        scheduleId: "",
+      })
+    );
+
+    setSubmitError("");
+  };
+
+  /* =======================================================
+     TRAVELER CHANGE
+  ======================================================= */
+
+  const handleTravelerChange = (
+    index,
+    field,
+    value
+  ) => {
+    setTravelers(
+      (previous) => {
+        const next = [
+          ...previous,
+        ];
+
+        next[index] = {
+          ...next[index],
+          [field]: value,
+        };
+
+        return next;
+      }
+    );
+
+    setSubmitError("");
+  };
+
+  /* =======================================================
+     NEXT
+  ======================================================= */
+
+  const next = () => {
+    setSubmitError("");
+
+    /* ================= STEP 1 ================= */
+
+    if (step === 0) {
+      if (!form.packageId) {
+        setSubmitError(
+          "Please select a tour package."
+        );
+        return;
+      }
+
+      if (!form.scheduleId) {
+        setSubmitError(
+          "Please select a departure."
+        );
+        return;
+      }
+
+      if (
+        Number(
+          form.numberOfAdults
+        ) < 1
+      ) {
+        setSubmitError(
+          "At least one adult is required."
+        );
+        return;
+      }
+
+      if (!selectedSchedule) {
+        setSubmitError(
+          "Please select a valid departure."
+        );
+        return;
+      }
+
+      const availableSeats =
+        Number(
+          selectedSchedule.available_seats ||
+          0
+        );
+
+      if (
+        totalTravelers >
+        availableSeats
+      ) {
+        setSubmitError(
+          `Only ${availableSeats} seats are available.`
+        );
+        return;
+      }
+    }
+
+    /* ================= STEP 2 ================= */
+
+    if (step === 1) {
+      if (
+        !form.name.trim() ||
+        !form.email.trim() ||
+        !form.phone.trim()
+      ) {
+        setSubmitError(
+          "Please fill all contact details."
+        );
+        return;
+      }
+
+      const invalidTraveler =
+        travelers.find(
+          (traveler) =>
+            !traveler.first_name?.trim() ||
+            !traveler.last_name?.trim()
+        );
+
+      if (invalidTraveler) {
+        setSubmitError(
+          "Please enter first name and last name for all travelers."
+        );
+        return;
+      }
+    }
+
+    setStep(
+      (previous) =>
+        Math.min(
+          previous + 1,
+          STEPS.length - 1
+        )
+    );
+  };
+
+  /* =======================================================
+     BACK
+  ======================================================= */
+
+  const back = () => {
+    setSubmitError("");
+
+    setStep(
+      (previous) =>
+        Math.max(
+          previous - 1,
+          0
+        )
+    );
+  };
+
+  /* =======================================================
+     SUBMIT BOOKING
+  ======================================================= */
+
+  const handleSubmit = async (
+    e
+  ) => {
+    e.preventDefault();
+
+    if (submitting) {
+      return;
+    }
+
+    setSubmitError("");
+
+    /* ================= PACKAGE ================= */
+
     if (!selectedPackage) {
-      setSubmitError('Please choose a tour package.')
-      return
+      setSubmitError(
+        "Please select a package."
+      );
+
+      setStep(0);
+
+      return;
     }
 
-    const customerId = getCustomerId()
+    /* ================= SCHEDULE ================= */
+
+    if (
+      !selectedSchedule?._id
+    ) {
+      setSubmitError(
+        "Please select a departure."
+      );
+
+      setStep(0);
+
+      return;
+    }
+
+    /* ================= CUSTOMER ================= */
+
+    const customerId =
+      getCustomerId();
+
+    console.log(
+      "CUSTOMER ID:",
+      customerId
+    );
+
     if (!customerId) {
-      setSubmitError('You need to be logged in to complete a booking.')
-      return
+      setSubmitError(
+        "You need to be logged in to complete a booking."
+      );
+
+      return;
     }
 
-    if (!autoSchedule) {
-      setSubmitError('No available departure for this package right now. Please try another package.')
-      return
+    /* ================= SEATS ================= */
+
+    const availableSeats =
+      Number(
+        selectedSchedule.available_seats ||
+        0
+      );
+
+    if (
+      totalTravelers >
+      availableSeats
+    ) {
+      setSubmitError(
+        `Only ${availableSeats} seats are available.`
+      );
+
+      setStep(0);
+
+      return;
     }
 
-    setSubmitting(true)
-    setSubmitError('')
+    /* ================= TRAVELERS ================= */
 
-    const bookingPayload = {
-      booking_reference: `BK-${Date.now().toString(36).toUpperCase()}`,
-      customer_id: customerId,
-      schedule_id: autoSchedule._id,
-      number_of_travelers: totalTravelers,
-      number_of_adults: Number(form.numberOfAdults),
-      number_of_children: Number(form.numberOfChildren),
-      total_price: pricing.total,
-      discount_applied: pricing.discount,
-      booking_status: 'pending',
-      payment_status: 'pending',
-      contact_name: form.name,
-      contact_email: form.email,
-      contact_phone: form.phone,
-      special_requests: form.notes,
+    if (
+      travelers.length !==
+      totalTravelers
+    ) {
+      setSubmitError(
+        "Please provide information for all travelers."
+      );
+
+      setStep(1);
+
+      return;
     }
 
     try {
-      const bookingRes = await http.post('/bookings/store', bookingPayload)
-      const bookingId =
-        bookingRes.data?._id || bookingRes.data?.booking?._id || bookingRes.data?.id
+      setSubmitting(true);
 
+      // 1. Create booking ONCE
+      const bookingPayload = {
+        booking_reference: `BK-${Date.now().toString(36).toUpperCase()}`,
+        customer_id: String(customerId),
+        schedule_id: String(selectedSchedule._id),
+        number_of_travelers: Number(totalTravelers),
+        number_of_adults: Number(form.numberOfAdults || 0),
+        number_of_children: Number(form.numberOfChildren || 0),
+        total_price: String(Number(pricing.total || 0)),
+        discount_applied: String(Number(pricing.discount || 0)),
+        booking_status: "pending",
+        payment_status: "pending",
+        special_requests: form.notes?.trim() || "",
+        cancellation_reason: "",
+      };
+
+      console.log("BOOKING PAYLOAD:", bookingPayload);
+      const bookingRes = await http.post("/bookings/store", bookingPayload);
+      console.log("BOOKING RESPONSE:", bookingRes.data);
+
+      const bookingData = bookingRes.data?.data || bookingRes.data?.booking || null;
+      const bookingId = bookingData?._id;
       if (!bookingId) {
-        throw new Error('Booking created but no booking id was returned')
+        throw new Error("Booking was created, but the server did not return a booking ID.");
       }
 
-      // create a traveler record for each traveler on this booking
-      await Promise.all(
-        travelers.map((t) =>
-          http.post('/bookingtravelers/store', {
-            ...t,
-            booking_id: bookingId,
-          })
-        )
-      )
+      // 2. Create traveler records
+      for (let index = 0; index < travelers.length; index += 1) {
+        const traveler = travelers[index];
+        const travelerPayload = {
+          booking_id: String(bookingId),
+          first_name: traveler.first_name?.trim() || "",
+          last_name: traveler.last_name?.trim() || "",
+          gender: traveler.gender || "male",
+          nationality: traveler.nationality?.trim() || "",
+          passport_number: traveler.passport_number?.trim() || "",
+          passport_expiry: traveler.passport_expiry || "",
+          is_primary: index === 0,
+        };
 
-      // create the matching payment record for this booking
+        console.log("TRAVELER PAYLOAD:", travelerPayload);
+        await http.post("/bookingtravelers/store", travelerPayload);
+      }
+
+      // 3. Create payment record. This records the selected method; it does not charge a card.
       const paymentPayload = {
-        booking_id: bookingId,
-        amount: pricing.total,
-        currency: form.currency,
-        payment_method: form.paymentMethod,
-        transaction_id: '',
-        processed_by: null,
-      }
+        booking_id: String(bookingId),
+        payment_reference: `PAY-${Date.now()}`,
+        amount: Number(pricing.total),
+        currency: form.currency || "INR",
+        payment_method: form.paymentMethod || "card",
+        transaction_id: "",
+        refund_reason: "",
+        notes: "",
+        processed_by: "",
+      };
 
-      const paymentRes = await http.post('/payments/store', paymentPayload)
+      console.log("PAYMENT PAYLOAD:", paymentPayload);
 
-      setBookingResult({ ...bookingRes.data, _id: bookingId, payment: paymentRes.data })
-      setSubmitted(true)
-    } catch (err) {
-      console.log('BOOKING SUBMIT ERROR:', err)
+      const paymentRes = await http.post(
+        "/payments/store",
+        paymentPayload
+      );
+
+      console.log("PAYMENT RESPONSE:", paymentRes.data);
+
+      setBookingResult({
+        ...bookingData,
+        _id: bookingId,
+        payment: paymentRes.data,
+      });
+      setSubmitted(true);
+    } catch (error) {
+      console.error("BOOKING SUBMIT ERROR:", error);
+      console.error("ERROR STATUS:", error?.response?.status);
+      console.error("ERROR RESPONSE:", JSON.stringify(error?.response?.data, null, 2));
       setSubmitError(
-        err?.response?.data?.message ||
-          'Something went wrong while creating your booking. Please try again.'
-      )
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Something went wrong while creating booking."
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
+
+  /* =======================================================
+     SUCCESS PAGE
+  ======================================================= */
 
   if (submitted) {
     return (
       <>
         <Header />
-        <main className="main" id="top">
+
+        <main
+          className="main"
+          id="top"
+        >
           <section className="bhk-book-success">
             <div className="container text-center">
+
               <div className="bhk-success-icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+                ✓
               </div>
-              <h2>Booking Request Received!</h2>
+
+              <h2>
+                Booking Request Received!
+              </h2>
+
               <p>
-                Thanks {form.name || 'traveler'}, we've received your request for{' '}
-                <strong>{selectedPackage?.package_name}</strong>
-                {bookingResult?.booking_reference && (
-                  <> (Ref: <strong>{bookingResult.booking_reference}</strong>)</>
+                Thanks{" "}
+                {form.name ||
+                  "traveler"},
+                we've received your
+                request for{" "}
+
+                <strong>
+                  {
+                    selectedPackage?.package_name
+                  }
+                </strong>
+
+                {(bookingResult?.booking_reference || bookingResult?._id) && (
+                  <>
+                    {" "}
+                    (Ref:{" "}
+                    <strong>
+                      {
+                        bookingResult.booking_reference || bookingResult._id
+                      }
+                    </strong>
+                    )
+                  </>
                 )}
-                {bookingResult?.payment?.payment_reference && (
-                  <> — Payment Ref: <strong>{bookingResult.payment.payment_reference}</strong></>
-                )}
-                . Our team will contact you at{' '}
-                {form.phone || form.email || 'your provided details'} within 24 hours to confirm your trip.
+
+                .
+
+                <br />
+
+                Departure:{" "}
+                <strong>
+                  {formatDate(
+                    selectedSchedule?.departure_date
+                  )}
+                </strong>
+
+                <br />
+
+                Return:{" "}
+                <strong>
+                  {formatDate(
+                    selectedSchedule?.return_date
+                  )}
+                </strong>
+
+                <br />
+
+                Our team will contact you
+                at{" "}
+                {form.phone ||
+                  form.email}.
               </p>
-              <a href="/" className="bhk-cta-btn">Back to Home</a>
+
+              <a
+                href="/"
+                className="bhk-cta-btn"
+              >
+                Back to Home
+              </a>
+
             </div>
           </section>
         </main>
+
         <Footer />
+
         <style>{`
-          .bhk-book-success { padding: 8rem 0 6rem; }
+          .bhk-book-success {
+            padding: 8rem 0 6rem;
+          }
+
           .bhk-success-icon {
-            width: 84px; height: 84px; border-radius: 50%;
-            background: #1f4d3d; display: flex; align-items: center; justify-content: center;
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: #1f4d3d;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 1.5rem;
+            font-size: 40px;
+            font-weight: 700;
           }
-          .bhk-book-success h2 { font-weight: 700; color: #1e1e1e; margin-bottom: 0.75rem; }
-          .bhk-book-success p { color: #6b7280; max-width: 480px; margin: 0 auto 2rem; line-height: 1.7; }
+
+          .bhk-book-success h2 {
+            font-weight: 700;
+            color: #1e1e1e;
+          }
+
+          .bhk-book-success p {
+            color: #6b7280;
+            max-width: 600px;
+            margin: 1rem auto 2rem;
+            line-height: 1.8;
+          }
+
           .bhk-cta-btn {
-            display: inline-block; background: #f5581f; color: #fff; font-weight: 600;
-            padding: 0.85rem 2.25rem; border-radius: 8px; text-decoration: none;
-            transition: background 0.2s ease, transform 0.2s ease;
+            display: inline-block;
+            background: #f5581f;
+            color: #fff;
+            font-weight: 600;
+            padding: .85rem 2.25rem;
+            border-radius: 8px;
+            text-decoration: none;
           }
-          .bhk-cta-btn:hover { background: #d8481a; color: #fff; transform: translateY(-2px); }
         `}</style>
       </>
-    )
+    );
   }
+
+  /* =======================================================
+     MAIN PAGE
+  ======================================================= */
 
   return (
     <>
       <Header />
-      <main className="main" id="top">
 
-        {/* ===================== Page Banner ===================== */}
+      <main
+        className="main"
+        id="top"
+      >
+
+        {/* =================================================
+            BANNER
+        ================================================= */}
+
         <section className="bhk-book-banner mt-7">
+
           <img
             className="bhk-banner-img"
             src="https://i.pinimg.com/1200x/85/62/a8/8562a863b19d2075eb119f1a22044bfe.jpg"
+            alt="Booking Banner"
           />
+
           <div className="bhk-banner-overlay" />
+
           <div className="container position-relative text-center">
-            <h1>Book Your Trip</h1>
+
+            <h1>
+              Book Your Trip
+            </h1>
+
             <p className="mb-0">
-              <span>Home</span> <span className="sep">/</span> <span className="active">Booking</span>
+
+              <span>
+                Home
+              </span>
+
+              <span className="sep">
+                /
+              </span>
+
+              <span className="active">
+                Booking
+              </span>
+
             </p>
+
           </div>
+
         </section>
 
-        {/* ===================== Booking form ===================== */}
+        {/* =================================================
+            BOOKING SECTION
+        ================================================= */}
+
         <section className="bhk-book-section">
+
           <div className="container">
 
-            {/* Step indicator */}
+            {/* =================================================
+                STEPS
+            ================================================= */}
+
             <div className="bhk-steps">
-              {STEPS.map((label, i) => (
-                <div key={label} className={'bhk-step' + (i === step ? ' active' : i < step ? ' done' : '')}>
-                  <span className="bhk-step-num">{i < step ? '✓' : i + 1}</span>
-                  <span className="bhk-step-label">{label}</span>
-                  {i < STEPS.length - 1 && <span className="bhk-step-line" />}
-                </div>
-              ))}
+
+              {STEPS.map(
+                (label, index) => (
+                  <div
+                    key={label}
+                    className={
+                      "bhk-step " +
+                      (
+                        index === step
+                          ? "active"
+                          : index < step
+                            ? "done"
+                            : ""
+                      )
+                    }
+                  >
+
+                    <span className="bhk-step-num">
+                      {
+                        index < step
+                          ? "✓"
+                          : index + 1
+                      }
+                    </span>
+
+                    <span className="bhk-step-label">
+                      {label}
+                    </span>
+
+                    {index <
+                      STEPS.length - 1 && (
+                        <span className="bhk-step-line" />
+                      )}
+
+                  </div>
+                )
+              )}
+
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form
+              onSubmit={
+                handleSubmit
+              }
+            >
+
               <div className="row g-4">
 
-                {/* Form column */}
+                {/* =================================================
+                    LEFT
+                ================================================= */}
+
                 <div className="col-lg-8">
+
                   <div className="bhk-form-card">
 
-                    {/* Step 1 */}
+                    {/* ERROR */}
+
+                    {submitError && (
+                      <div className="alert alert-danger">
+                        {submitError}
+                      </div>
+                    )}
+
+                    {/* =================================================
+                        STEP 1
+                    ================================================= */}
+
                     {step === 0 && (
                       <>
-                        <h5 className="bhk-form-title">Choose Your Package</h5>
+                        <h5 className="bhk-form-title">
+                          Choose Your Trip
+                        </h5>
 
                         {loadingPackages ? (
-                          <p className="text-muted">Loading packages...</p>
+                          <div className="text-center py-4">
+
+                            <div className="spinner-border" />
+
+                            <p className="mt-2">
+                              Loading packages...
+                            </p>
+
+                          </div>
                         ) : packages.length === 0 ? (
-                          <p className="text-muted">No packages available right now.</p>
+                          <div className="alert alert-warning">
+                            No packages available right now.
+                          </div>
                         ) : (
                           <>
+
+                            {/* PACKAGE */}
+
                             <div className="mb-3">
-                              <label className="bhk-label">Tour Package</label>
+
+                              <label className="bhk-label">
+                                Tour Package
+                              </label>
+
                               <select
                                 name="packageId"
-                                value={form.packageId}
-                                onChange={handleChange}
+                                value={
+                                  form.packageId
+                                }
+                                onChange={
+                                  handlePackageChange
+                                }
                                 className="form-select bhk-input-plain"
                               >
-                                {packages.map((p) => (
-                                  <option value={p._id} key={p._id}>
-                                    {p.package_name} — {p.destination}
-                                  </option>
-                                ))}
+
+                                <option value="">
+                                  Select Package
+                                </option>
+
+                                {packages.map(
+                                  (item) => (
+                                    <option
+                                      key={
+                                        item._id
+                                      }
+                                      value={
+                                        item._id
+                                      }
+                                    >
+                                      {
+                                        item.package_name
+                                      }
+
+                                      {" — "}
+
+                                      {
+                                        item.destination
+                                      }
+                                    </option>
+                                  )
+                                )}
+
                               </select>
+
                             </div>
 
-                            <div className="row g-3">
-                              <div className="col-sm-6">
-                                <label className="bhk-label">Adults</label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={20}
-                                  name="numberOfAdults"
-                                  value={form.numberOfAdults}
-                                  onChange={handleChange}
-                                  className="form-control bhk-input-plain"
-                                  required
-                                />
-                              </div>
-                              <div className="col-sm-6">
-                                <label className="bhk-label">Children</label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={20}
-                                  name="numberOfChildren"
-                                  value={form.numberOfChildren}
-                                  onChange={handleChange}
-                                  className="form-control bhk-input-plain"
-                                />
-                              </div>
+                            {/* DEPARTURE */}
+
+                            <div className="mb-3">
+
+                              <label className="bhk-label">
+                                Select Departure
+                              </label>
+
+                              <select
+                                name="scheduleId"
+                                value={
+                                  form.scheduleId
+                                }
+                                onChange={
+                                  handleChange
+                                }
+                                className="form-select bhk-input-plain"
+                                disabled={
+                                  !form.packageId ||
+                                  loadingSchedules
+                                }
+                              >
+
+                                <option value="">
+                                  {!form.packageId
+                                    ? "First select package"
+                                    : loadingSchedules
+                                      ? "Loading departures..."
+                                      : availableSchedules.length === 0
+                                        ? "No departure available"
+                                        : "Select Departure"}
+                                </option>
+
+                                {availableSchedules.map(
+                                  (
+                                    schedule
+                                  ) => (
+                                    <option
+                                      key={
+                                        schedule._id
+                                      }
+                                      value={
+                                        schedule._id
+                                      }
+                                    >
+
+                                      {formatDate(
+                                        schedule.departure_date
+                                      )}
+
+                                      {" → "}
+
+                                      {formatDate(
+                                        schedule.return_date
+                                      )}
+
+                                      {" | Seats: "}
+
+                                      {
+                                        schedule.available_seats
+                                      }
+
+                                    </option>
+                                  )
+                                )}
+
+                              </select>
+
                             </div>
+
+                            {/* SELECTED DEPARTURE */}
+
+                            {selectedSchedule && (
+                              <div className="alert alert-success">
+
+                                <strong>
+                                  Selected Departure
+                                </strong>
+
+                                <br />
+
+                                Departure:{" "}
+                                {formatDate(
+                                  selectedSchedule.departure_date
+                                )}
+
+                                <br />
+
+                                Return:{" "}
+                                {formatDate(
+                                  selectedSchedule.return_date
+                                )}
+
+                                <br />
+
+                                Available Seats:{" "}
+
+                                <strong>
+                                  {
+                                    selectedSchedule.available_seats
+                                  }
+                                </strong>
+
+                              </div>
+                            )}
+
+                            {/* NO DEPARTURES */}
+
+                            {form.packageId &&
+                              !loadingSchedules &&
+                              availableSchedules.length === 0 && (
+                                <div className="alert alert-warning">
+                                  No departures are available for this package.
+                                  Please select another package.
+                                </div>
+                              )}
+
+                            {/* PEOPLE */}
+
+                            <div className="row g-3">
+
+                              <div className="col-sm-6">
+
+                                <label className="bhk-label">
+                                  Adults
+                                </label>
+
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="20"
+                                  name="numberOfAdults"
+                                  value={
+                                    form.numberOfAdults
+                                  }
+                                  onChange={
+                                    handleChange
+                                  }
+                                  className="form-control bhk-input-plain"
+                                />
+
+                              </div>
+
+                              <div className="col-sm-6">
+
+                                <label className="bhk-label">
+                                  Children
+                                </label>
+
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="20"
+                                  name="numberOfChildren"
+                                  value={
+                                    form.numberOfChildren
+                                  }
+                                  onChange={
+                                    handleChange
+                                  }
+                                  className="form-control bhk-input-plain"
+                                />
+
+                              </div>
+
+                            </div>
+
                           </>
                         )}
                       </>
                     )}
 
-                    {/* Step 2 */}
+                    {/* =================================================
+                        STEP 2
+                    ================================================= */}
+
                     {step === 1 && (
                       <>
-                        <h5 className="bhk-form-title">Traveler Information</h5>
+                        <h5 className="bhk-form-title">
+                          Traveler Information
+                        </h5>
+
+                        {/* CONTACT */}
 
                         <div className="row g-3 mb-4">
+
                           <div className="col-sm-6">
-                            <label className="bhk-label">Contact Name</label>
+
+                            <label className="bhk-label">
+                              Contact Name
+                            </label>
+
                             <input
                               type="text"
                               name="name"
-                              value={form.name}
-                              onChange={handleChange}
-                              placeholder="Your full name"
+                              value={
+                                form.name
+                              }
+                              onChange={
+                                handleChange
+                              }
                               className="form-control bhk-input-plain"
-                              required
+                              placeholder="Enter contact name"
                             />
+
                           </div>
+
                           <div className="col-sm-6">
-                            <label className="bhk-label">Phone Number</label>
+
+                            <label className="bhk-label">
+                              Phone
+                            </label>
+
                             <input
                               type="tel"
                               name="phone"
-                              value={form.phone}
-                              onChange={handleChange}
-                              placeholder="+91 98765 43210"
+                              value={
+                                form.phone
+                              }
+                              onChange={
+                                handleChange
+                              }
                               className="form-control bhk-input-plain"
-                              required
+                              placeholder="Enter phone number"
                             />
+
                           </div>
+
                           <div className="col-12">
-                            <label className="bhk-label">Email Address</label>
+
+                            <label className="bhk-label">
+                              Email
+                            </label>
+
                             <input
                               type="email"
                               name="email"
-                              value={form.email}
-                              onChange={handleChange}
-                              placeholder="you@example.com"
+                              value={
+                                form.email
+                              }
+                              onChange={
+                                handleChange
+                              }
                               className="form-control bhk-input-plain"
-                              required
+                              placeholder="Enter email address"
                             />
+
                           </div>
+
                         </div>
 
-                        {travelers.map((t, i) => (
-                          <div key={i} className="bhk-traveler-block">
-                            <h6 className="bhk-traveler-title">
-                              Traveler {i + 1} {t.is_primary ? '(Primary)' : ''}
-                            </h6>
-                            <div className="row g-3">
-                              <div className="col-sm-6">
-                                <label className="bhk-label">First Name</label>
-                                <input
-                                  type="text"
-                                  className="form-control bhk-input-plain"
-                                  value={t.first_name}
-                                  onChange={(e) => handleTravelerChange(i, 'first_name', e.target.value)}
-                                  required
-                                />
+                        {/* TRAVELERS */}
+
+                        {travelers.map(
+                          (
+                            traveler,
+                            index
+                          ) => (
+                            <div
+                              key={index}
+                              className="bhk-traveler-block"
+                            >
+
+                              <h6 className="bhk-traveler-title">
+                                Traveler{" "}
+                                {index + 1}
+
+                                {traveler.is_primary &&
+                                  " (Primary)"}
+                              </h6>
+
+                              <div className="row g-3">
+
+                                {/* FIRST NAME */}
+
+                                <div className="col-sm-6">
+
+                                  <label className="bhk-label">
+                                    First Name
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    value={
+                                      traveler.first_name
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "first_name",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-control bhk-input-plain"
+                                  />
+
+                                </div>
+
+                                {/* LAST NAME */}
+
+                                <div className="col-sm-6">
+
+                                  <label className="bhk-label">
+                                    Last Name
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    value={
+                                      traveler.last_name
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "last_name",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-control bhk-input-plain"
+                                  />
+
+                                </div>
+
+                                {/* GENDER */}
+
+                                <div className="col-sm-4">
+
+                                  <label className="bhk-label">
+                                    Gender
+                                  </label>
+
+                                  <select
+                                    value={
+                                      traveler.gender
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "gender",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-select bhk-input-plain"
+                                  >
+
+                                    {GENDERS.map(
+                                      (
+                                        gender
+                                      ) => (
+                                        <option
+                                          key={
+                                            gender
+                                          }
+                                          value={
+                                            gender
+                                          }
+                                        >
+                                          {gender}
+                                        </option>
+                                      )
+                                    )}
+
+                                  </select>
+
+                                </div>
+
+                                {/* NATIONALITY */}
+
+                                <div className="col-sm-4">
+
+                                  <label className="bhk-label">
+                                    Nationality
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    value={
+                                      traveler.nationality
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "nationality",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-control bhk-input-plain"
+                                  />
+
+                                </div>
+
+                                {/* PASSPORT */}
+
+                                <div className="col-sm-4">
+
+                                  <label className="bhk-label">
+                                    Passport Number
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    value={
+                                      traveler.passport_number
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "passport_number",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-control bhk-input-plain"
+                                  />
+
+                                </div>
+
+                                {/* PASSPORT EXPIRY */}
+
+                                <div className="col-sm-6">
+
+                                  <label className="bhk-label">
+                                    Passport Expiry
+                                  </label>
+
+                                  <input
+                                    type="date"
+                                    value={
+                                      traveler.passport_expiry
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "passport_expiry",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="form-control bhk-input-plain"
+                                  />
+
+                                </div>
+
                               </div>
-                              <div className="col-sm-6">
-                                <label className="bhk-label">Last Name</label>
-                                <input
-                                  type="text"
-                                  className="form-control bhk-input-plain"
-                                  value={t.last_name}
-                                  onChange={(e) => handleTravelerChange(i, 'last_name', e.target.value)}
-                                  required
-                                />
-                              </div>
-                              <div className="col-sm-4">
-                                <label className="bhk-label">Gender</label>
-                                <select
-                                  className="form-select bhk-input-plain"
-                                  value={t.gender}
-                                  onChange={(e) => handleTravelerChange(i, 'gender', e.target.value)}
-                                >
-                                  {GENDERS.map((g) => (
-                                    <option value={g} key={g} className="text-capitalize">{g}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="col-sm-4">
-                                <label className="bhk-label">Nationality</label>
-                                <input
-                                  type="text"
-                                  className="form-control bhk-input-plain"
-                                  value={t.nationality}
-                                  onChange={(e) => handleTravelerChange(i, 'nationality', e.target.value)}
-                                />
-                              </div>
-                              <div className="col-sm-4">
-                                <label className="bhk-label">Passport Number</label>
-                                <input
-                                  type="text"
-                                  className="form-control bhk-input-plain"
-                                  value={t.passport_number}
-                                  onChange={(e) => handleTravelerChange(i, 'passport_number', e.target.value)}
-                                />
-                              </div>
-                              <div className="col-sm-6">
-                                <label className="bhk-label">Passport Expiry</label>
-                                <input
-                                  type="date"
-                                  className="form-control bhk-input-plain"
-                                  value={t.passport_expiry}
-                                  onChange={(e) => handleTravelerChange(i, 'passport_expiry', e.target.value)}
-                                />
-                              </div>
+
                             </div>
-                          </div>
-                        ))}
-
-                        <div className="mb-3">
-                          <label className="bhk-label">Special Requests (optional)</label>
-                          <textarea
-                            name="notes"
-                            value={form.notes}
-                            onChange={handleChange}
-                            rows={3}
-                            placeholder="Dietary needs, accessibility, celebration occasions..."
-                            className="form-control bhk-input-plain"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Step 3 */}
-                    {step === 2 && (
-                      <>
-                        <h5 className="bhk-form-title">Review Your Booking</h5>
-                        <ul className="bhk-review-list">
-                          <li><span>Package</span><strong>{selectedPackage?.package_name || '—'}</strong></li>
-                          <li><span>Destination</span><strong>{selectedPackage?.destination || '—'}</strong></li>
-                          <li><span>Travelers</span><strong>{form.numberOfAdults}A / {form.numberOfChildren}C</strong></li>
-                          <li><span>Contact</span><strong>{form.name || '—'}</strong></li>
-                          <li><span>Email</span><strong>{form.email || '—'}</strong></li>
-                          <li><span>Phone</span><strong>{form.phone || '—'}</strong></li>
-                        </ul>
-
-                        <div className="row g-3 mb-3">
-                          <div className="col-sm-7">
-                            <label className="bhk-label">Payment Method</label>
-                            <select
-                              name="paymentMethod"
-                              value={form.paymentMethod}
-                              onChange={handleChange}
-                              className="form-select bhk-input-plain"
-                            >
-                              {PAYMENT_METHODS.map((m) => (
-                                <option value={m.id} key={m.id}>{m.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="col-sm-5">
-                            <label className="bhk-label">Currency</label>
-                            <select
-                              name="currency"
-                              value={form.currency}
-                              onChange={handleChange}
-                              className="form-select bhk-input-plain"
-                            >
-                              <option value="INR">INR (₹)</option>
-                              <option value="USD">USD ($)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        {submitError && (
-                          <div className="alert alert-danger py-2 px-3" style={{ fontSize: '0.85rem' }}>
-                            {submitError}
-                          </div>
+                          )
                         )}
 
-                        <div className="bhk-payment-note">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1f4d3d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="11" width="18" height="10" rx="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                          Payment is collected securely after our team confirms availability.
+                        {/* NOTES */}
+
+                        <div className="mb-3">
+
+                          <label className="bhk-label">
+                            Special Requests
+                          </label>
+
+                          <textarea
+                            name="notes"
+                            value={
+                              form.notes
+                            }
+                            onChange={
+                              handleChange
+                            }
+                            rows="3"
+                            className="form-control bhk-input-plain"
+                            placeholder="Any special requests..."
+                          />
+
                         </div>
+
                       </>
                     )}
 
-                    {/* Step controls */}
+                    {/* =================================================
+                        STEP 3
+                    ================================================= */}
+
+                    {step === 2 && (
+                      <>
+                        <h5 className="bhk-form-title">
+                          Review Your Booking
+                        </h5>
+
+                        <ul className="bhk-review-list">
+
+                          <li>
+                            <span>
+                              Package
+                            </span>
+
+                            <strong>
+                              {
+                                selectedPackage?.package_name
+                              }
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Destination
+                            </span>
+
+                            <strong>
+                              {
+                                selectedPackage?.destination
+                              }
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Departure
+                            </span>
+
+                            <strong>
+                              {formatDate(
+                                selectedSchedule?.departure_date
+                              )}
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Return
+                            </span>
+
+                            <strong>
+                              {formatDate(
+                                selectedSchedule?.return_date
+                              )}
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Available Seats
+                            </span>
+
+                            <strong>
+                              {
+                                selectedSchedule?.available_seats
+                              }
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Travelers
+                            </span>
+
+                            <strong>
+                              {
+                                form.numberOfAdults
+                              }
+                              A /{" "}
+                              {
+                                form.numberOfChildren
+                              }
+                              C
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Contact
+                            </span>
+
+                            <strong>
+                              {
+                                form.name
+                              }
+                            </strong>
+                          </li>
+
+                          <li>
+                            <span>
+                              Total
+                            </span>
+
+                            <strong>
+                              ₹
+                              {pricing.total.toLocaleString(
+                                "en-IN"
+                              )}
+                            </strong>
+                          </li>
+
+                        </ul>
+
+                        {/* PAYMENT */}
+
+                        <div className="row g-3">
+
+                          <div className="col-sm-7">
+
+                            <label className="bhk-label">
+                              Payment Method
+                            </label>
+
+                            <select
+                              name="paymentMethod"
+                              value={
+                                form.paymentMethod
+                              }
+                              onChange={
+                                handleChange
+                              }
+                              className="form-select bhk-input-plain"
+                            >
+
+                              {PAYMENT_METHODS.map(
+                                (
+                                  method
+                                ) => (
+                                  <option
+                                    key={
+                                      method.id
+                                    }
+                                    value={
+                                      method.id
+                                    }
+                                  >
+                                    {
+                                      method.label
+                                    }
+                                  </option>
+                                )
+                              )}
+
+                            </select>
+
+                          </div>
+
+                          <div className="col-sm-5">
+
+                            <label className="bhk-label">
+                              Currency
+                            </label>
+
+                            <select
+                              name="currency"
+                              value={
+                                form.currency
+                              }
+                              onChange={
+                                handleChange
+                              }
+                              className="form-select bhk-input-plain"
+                            >
+
+                              <option value="INR">
+                                INR (₹)
+                              </option>
+
+                              <option value="USD">
+                                USD ($)
+                              </option>
+
+                            </select>
+
+                          </div>
+
+                        </div>
+
+                      </>
+                    )}
+
+                    {/* =================================================
+                        BUTTONS
+                    ================================================= */}
+
                     <div className="bhk-step-actions">
+
                       {step > 0 && (
-                        <button type="button" onClick={back} className="bhk-btn-outline" disabled={submitting}>
+                        <button
+                          type="button"
+                          onClick={back}
+                          className="bhk-btn-outline"
+                          disabled={
+                            submitting
+                          }
+                        >
                           Back
                         </button>
                       )}
-                      {step < STEPS.length - 1 && (
-                        <button
-                          type="button"
-                          onClick={next}
-                          className="bhk-btn-solid ms-auto"
-                          disabled={step === 0 && !form.packageId}
-                        >
-                          Continue
-                        </button>
-                      )}
-                      {step === STEPS.length - 1 && (
-                        <button type="submit" className="bhk-btn-solid ms-auto" disabled={submitting}>
-                          {submitting ? 'Submitting...' : 'Confirm Booking'}
-                        </button>
-                      )}
+
+                      {step <
+                        STEPS.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={next}
+                            className="bhk-btn-solid ms-auto"
+                            disabled={
+                              submitting ||
+                              (
+                                step === 0 &&
+                                (
+                                  !form.packageId ||
+                                  !form.scheduleId
+                                )
+                              )
+                            }
+                          >
+                            Continue
+                          </button>
+                        )}
+
+                      {step ===
+                        STEPS.length - 1 && (
+                          <button
+                            type="submit"
+                            className="bhk-btn-solid ms-auto"
+                            disabled={
+                              submitting
+                            }
+                          >
+                            {submitting
+                              ? "Submitting..."
+                              : "Confirm Booking"}
+                          </button>
+                        )}
+
                     </div>
+
                   </div>
+
                 </div>
 
-                {/* Summary sidebar */}
+                {/* =================================================
+                    SUMMARY
+                ================================================= */}
+
                 <div className="col-lg-4">
+
                   <div className="bhk-summary-card">
+
                     {selectedPackage?.featured_image && (
                       <img
                         src={`http://localhost:3000/media/${selectedPackage.featured_image}`}
-                        alt={selectedPackage.package_name}
+                        alt={
+                          selectedPackage.package_name
+                        }
                         className="bhk-summary-img"
                       />
                     )}
+
                     <div className="bhk-summary-body">
-                      <h6>{selectedPackage?.package_name || 'Select a package'}</h6>
+
+                      <h6>
+                        {
+                          selectedPackage?.package_name ||
+                          "Select a package"
+                        }
+                      </h6>
+
                       {selectedPackage && (
                         <p className="bhk-summary-place">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5581f" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          {selectedPackage.destination}
+                          {
+                            selectedPackage.destination
+                          }
                         </p>
                       )}
 
-                      <div className="bhk-summary-row">
-                        <span>Base price × {totalTravelers || 1}</span>
-                        <span>₹{pricing.base.toLocaleString('en-IN')}</span>
-                      </div>
-                      {pricing.discount > 0 && (
-                        <div className="bhk-summary-row">
-                          <span>Discount</span>
-                          <span>−₹{pricing.discount.toLocaleString('en-IN')}</span>
+                      {/* SELECTED DEPARTURE */}
+
+                      {selectedSchedule && (
+                        <div className="bhk-summary-departure">
+
+                          <small>
+                            Selected Departure
+                          </small>
+
+                          <strong>
+                            {formatDate(
+                              selectedSchedule.departure_date
+                            )}
+                          </strong>
+
+                          <span>
+                            Return:{" "}
+                            {formatDate(
+                              selectedSchedule.return_date
+                            )}
+                          </span>
+
+                          <span>
+                            Seats:{" "}
+                            {
+                              selectedSchedule.available_seats
+                            }
+                          </span>
+
                         </div>
                       )}
+
+                      {/* PRICE */}
+
                       <div className="bhk-summary-row">
-                        <span>Taxes &amp; fees (5%)</span>
-                        <span>₹{pricing.taxes.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="bhk-summary-total">
-                        <span>Total</span>
-                        <span>₹{pricing.total.toLocaleString('en-IN')}</span>
+
+                        <span>
+                          Base price ×{" "}
+                          {totalTravelers || 1}
+                        </span>
+
+                        <span>
+                          ₹
+                          {pricing.base.toLocaleString(
+                            "en-IN"
+                          )}
+                        </span>
+
                       </div>
 
-                      <div className="bhk-summary-features">
-                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f4d3d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg> Free cancellation up to 48 hrs</div>
-                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f4d3d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg> 24/7 traveler support</div>
-                        <div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f4d3d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg> Best price guaranteed</div>
+                      {pricing.discount >
+                        0 && (
+                          <div className="bhk-summary-row">
+
+                            <span>
+                              Discount
+                            </span>
+
+                            <span>
+                              -₹
+                              {pricing.discount.toLocaleString(
+                                "en-IN"
+                              )}
+                            </span>
+
+                          </div>
+                        )}
+
+                      <div className="bhk-summary-row">
+
+                        <span>
+                          Taxes & fees
+                        </span>
+
+                        <span>
+                          ₹
+                          {pricing.taxes.toLocaleString(
+                            "en-IN"
+                          )}
+                        </span>
+
                       </div>
+
+                      <div className="bhk-summary-total">
+
+                        <span>
+                          Total
+                        </span>
+
+                        <span>
+                          ₹
+                          {pricing.total.toLocaleString(
+                            "en-IN"
+                          )}
+                        </span>
+
+                      </div>
+
                     </div>
+
                   </div>
+
                 </div>
 
               </div>
+
             </form>
+
           </div>
+
         </section>
 
       </main>
+
       <Footer />
 
+      {/* =======================================================
+          CSS
+      ======================================================= */}
+
       <style>{`
-        /* Banner */
+
         .bhk-book-banner {
           position: relative;
           overflow: hidden;
@@ -693,168 +2146,298 @@ const Booking = () => {
           display: flex;
           align-items: center;
         }
-        .bhk-banner-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-        .bhk-banner-overlay {
-          position: absolute; inset: 0;
-          z-index: 0;
+
+        .bhk-banner-img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
-        .bhk-book-banner .container { z-index: 1; }
-        .bhk-book-banner h1 { color: #fff; font-weight: 700; font-size: 2.4rem; margin-bottom: 0.6rem; }
-        .bhk-book-banner p { color: rgba(255,255,255,0.7); font-size: 0.95rem; }
-        .bhk-book-banner .active { color: #f5a623; font-weight: 600; }
-        .bhk-book-banner .sep { margin: 0 6px; }
 
-        .bhk-book-section { padding: 3.5rem 0 5rem; }
+        .bhk-banner-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,.45);
+        }
 
-        /* Steps */
+        .bhk-book-banner .container {
+          z-index: 1;
+        }
+
+        .bhk-book-banner h1 {
+          color: white;
+          font-weight: 700;
+        }
+
+        .bhk-book-banner p {
+          color: white;
+        }
+
+        .bhk-book-banner .sep {
+          margin: 0 10px;
+        }
+
+        .bhk-book-banner .active {
+          color: #f5581f;
+          font-weight: 600;
+        }
+
+        .bhk-book-section {
+          padding: 3.5rem 0 5rem;
+          background: #f8f9fa;
+        }
+
         .bhk-steps {
           display: flex;
-          align-items: center;
           justify-content: center;
-          gap: 0.5rem;
+          align-items: center;
           margin-bottom: 2.5rem;
-          flex-wrap: wrap;
         }
+
         .bhk-step {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
         }
-        .bhk-step-num {
-          width: 30px; height: 30px; border-radius: 50%;
-          background: #e5e7eb; color: #6b7280;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 0.8rem; font-weight: 700;
-        }
-        .bhk-step.active .bhk-step-num { background: #1f4d3d; color: #fff; }
-        .bhk-step.done .bhk-step-num { background: #f5581f; color: #fff; }
-        .bhk-step-label { font-size: 0.85rem; font-weight: 600; color: #6b7280; }
-        .bhk-step.active .bhk-step-label { color: #1e1e1e; }
-        .bhk-step-line { width: 40px; height: 2px; background: #e5e7eb; margin: 0 6px; }
 
-        /* Form card */
-        .bhk-form-card {
-          background: #fff;
+        .bhk-step-num {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #e5e7eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+        }
+
+        .bhk-step.active .bhk-step-num {
+          background: #1f4d3d;
+          color: white;
+        }
+
+        .bhk-step.done .bhk-step-num {
+          background: #f5581f;
+          color: white;
+        }
+
+        .bhk-step-label {
+          font-size: .85rem;
+          font-weight: 600;
+        }
+
+        .bhk-step-line {
+          width: 40px;
+          height: 2px;
+          background: #ddd;
+          margin: 0 10px;
+        }
+
+        .bhk-form-card,
+        .bhk-summary-card {
+          background: white;
           border-radius: 16px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+          box-shadow: 0 8px 24px rgba(0,0,0,.06);
+        }
+
+        .bhk-form-card {
           padding: 2rem;
         }
-        .bhk-form-title { font-weight: 700; color: #1e1e1e; margin-bottom: 1.25rem; }
-        .bhk-label { display: block; font-size: 0.82rem; color: #6b7280; margin-bottom: 0.35rem; font-weight: 600; }
-        .bhk-input-plain {
-          border: 1px solid #e5e7eb !important;
-          border-radius: 8px !important;
-          padding: 0.6rem 0.8rem !important;
-          font-size: 0.92rem;
+
+        .bhk-form-title {
+          font-weight: 700;
+          margin-bottom: 1.5rem;
         }
-        .bhk-input-plain:focus {
-          border-color: #1f4d3d !important;
-          box-shadow: 0 0 0 3px rgba(31,77,61,0.1) !important;
+
+        .bhk-label {
+          display: block;
+          font-size: .82rem;
+          font-weight: 600;
+          margin-bottom: 5px;
+          color: #6b7280;
+        }
+
+        .bhk-input-plain {
+          border-radius: 8px !important;
+          padding: .65rem .8rem !important;
         }
 
         .bhk-traveler-block {
-          border: 1px dashed #e5e7eb;
+          border: 1px dashed #ddd;
           border-radius: 10px;
           padding: 1rem;
           margin-bottom: 1rem;
         }
-        .bhk-traveler-title { font-weight: 700; font-size: 0.88rem; color: #1f4d3d; margin-bottom: 0.75rem; }
 
-        .bhk-review-list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+        .bhk-traveler-title {
+          color: #1f4d3d;
+          font-weight: 700;
+          margin-bottom: 1rem;
+        }
+
+        .bhk-review-list {
+          list-style: none;
+          padding: 0;
+        }
+
         .bhk-review-list li {
           display: flex;
           justify-content: space-between;
-          padding: 0.65rem 0;
+          gap: 20px;
+          padding: .7rem 0;
           border-bottom: 1px dashed #eee;
-          font-size: 0.9rem;
         }
-        .bhk-review-list li span { color: #6b7280; }
-        .bhk-review-list li strong { color: #1e1e1e; }
-        .bhk-payment-note {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: #f0f7f4;
-          color: #1f4d3d;
-          font-size: 0.85rem;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
+
+        .bhk-review-list li span {
+          color: #6b7280;
+        }
+
+        .bhk-review-list li strong {
+          text-align: right;
         }
 
         .bhk-step-actions {
           display: flex;
-          align-items: center;
           margin-top: 2rem;
-          gap: 0.75rem;
+          gap: .75rem;
         }
-        .bhk-btn-outline {
-          background: transparent;
-          border: 1px solid #d1d5db;
-          color: #444;
-          font-weight: 600;
-          padding: 0.7rem 1.5rem;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-        }
-        .bhk-btn-outline:hover { border-color: #1f4d3d; color: #1f4d3d; }
+
         .bhk-btn-solid {
           background: #1f4d3d;
+          color: white;
           border: none;
-          color: #fff;
-          font-weight: 600;
-          padding: 0.7rem 1.75rem;
+          padding: .7rem 1.75rem;
           border-radius: 8px;
-          transition: background 0.2s ease;
+          font-weight: 600;
         }
-        .bhk-btn-solid:hover { background: #173a2e; }
-        .bhk-btn-solid:disabled, .bhk-btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* Summary sidebar */
+        .bhk-btn-solid:hover {
+          background: #173c30;
+          color: white;
+        }
+
+        .bhk-btn-solid:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
+        .bhk-btn-outline {
+          background: white;
+          border: 1px solid #ccc;
+          padding: .7rem 1.5rem;
+          border-radius: 8px;
+        }
+
         .bhk-summary-card {
-          background: #fff;
-          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.06);
           position: sticky;
           top: 100px;
         }
-        .bhk-summary-img { width: 100%; height: 160px; object-fit: cover; }
-        .bhk-summary-body { padding: 1.5rem; }
-        .bhk-summary-body h6 { font-weight: 700; color: #1e1e1e; margin-bottom: 0.3rem; }
-        .bhk-summary-place {
-          display: flex; align-items: center; gap: 5px;
-          font-size: 0.8rem; color: #9ca3af; margin-bottom: 1.1rem;
-        }
-        .bhk-summary-row {
-          display: flex; justify-content: space-between;
-          font-size: 0.85rem; color: #6b7280; padding: 0.45rem 0;
-        }
-        .bhk-summary-total {
-          display: flex; justify-content: space-between;
-          font-weight: 700; font-size: 1.05rem; color: #1e1e1e;
-          padding-top: 0.75rem; margin-top: 0.5rem;
-          border-top: 1px solid #f0f0f0;
-        }
-        .bhk-summary-total span:last-child { color: #1f4d3d; }
-        .bhk-summary-features {
-          margin-top: 1.25rem;
-          display: flex; flex-direction: column; gap: 0.55rem;
-        }
-        .bhk-summary-features div {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 0.78rem; color: #6b7280;
+
+        .bhk-summary-img {
+          width: 100%;
+          height: 160px;
+          object-fit: cover;
         }
 
-        @media (max-width: 991px) {
-          .bhk-summary-card { position: static; margin-top: 1.5rem; }
+        .bhk-summary-body {
+          padding: 1.5rem;
         }
-        @media (max-width: 767px) {
-          .bhk-book-banner { padding: 6rem 0 2.5rem; }
-          .bhk-form-card { padding: 1.5rem; }
+
+        .bhk-summary-body h6 {
+          font-size: 1.1rem;
+          font-weight: 700;
+          margin-bottom: .35rem;
         }
+
+        .bhk-summary-place {
+          color: #6b7280;
+          margin-bottom: 1rem;
+        }
+
+        .bhk-summary-departure {
+          background: #f1f8f5;
+          border-radius: 10px;
+          padding: .85rem;
+          margin-bottom: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .bhk-summary-departure small {
+          color: #6b7280;
+        }
+
+        .bhk-summary-departure strong {
+          color: #1f4d3d;
+        }
+
+        .bhk-summary-departure span {
+          font-size: .85rem;
+          color: #6b7280;
+        }
+
+        .bhk-summary-row,
+        .bhk-summary-total {
+          display: flex;
+          justify-content: space-between;
+          gap: 15px;
+          padding: .5rem 0;
+        }
+
+        .bhk-summary-row span:first-child {
+          color: #6b7280;
+        }
+
+        .bhk-summary-total {
+          border-top: 1px solid #eee;
+          margin-top: .5rem;
+          padding-top: 1rem;
+          font-weight: 700;
+          font-size: 1.1rem;
+        }
+
+        .bhk-summary-total span:last-child {
+          color: #1f4d3d;
+        }
+
+        @media(max-width:991px) {
+
+          .bhk-summary-card {
+            position: static;
+            margin-top: 1rem;
+          }
+
+        }
+
+        @media(max-width:576px) {
+
+          .bhk-form-card {
+            padding: 1.25rem;
+          }
+
+          .bhk-steps {
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding-bottom: 5px;
+          }
+
+          .bhk-step-label {
+            white-space: nowrap;
+          }
+
+          .bhk-step-line {
+            width: 20px;
+            margin: 0 5px;
+          }
+
+        }
+
       `}</style>
     </>
-  )
-}
+  );
+};
 
-export default Booking
+export default Booking;
